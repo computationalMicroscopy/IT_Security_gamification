@@ -1,149 +1,137 @@
 import streamlit as st
+import random
 import time
 
-# --- INITIALISIERUNG ---
-if 'step' not in st.session_state:
-    st.session_state.step = "intro"
-if 'security_level' not in st.session_state:
-    st.session_state.security_level = 50  # Startwert Sicherheit
-if 'integrity_corrupted' not in st.session_state:
-    st.session_state.integrity_corrupted = False
-if 'logs' not in st.session_state:
-    st.session_state.logs = []
+# --- KONFIGURATION & STYLES ---
+st.set_page_config(page_title="Incident Responder: Proc-X", layout="wide")
 
-def log_event(event):
-    st.session_state.logs.insert(0, f"[{time.strftime('%H:%M:%S')}] {event}")
-
-# --- UI SETTINGS ---
-st.set_page_config(page_title="Silent Leak: Operation Deepwater", layout="wide")
-
-# --- CSS FÜR TERMINAL-LOOK ---
 st.markdown("""
     <style>
-    .reportview-container { background: #0e1117; }
-    .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #262730; color: white; }
-    .stProgress > div > div > div > div { background-color: #00ff00; }
+    .stApp { background-color: #050a05; color: #00ff00; font-family: 'Courier New', Courier, monospace; }
+    .stButton>button { border: 1px solid #00ff00; background-color: black; color: #00ff00; }
+    .stButton>button:hover { background-color: #003300; border: 1px solid #00ff00; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- SIDEBAR: SYSTEM STATUS ---
+# --- SESSION STATE INITIALISIERUNG ---
+if 'game_state' not in st.session_state:
+    # Zufällige Generierung des Szenarios
+    assets = ["Bio-Reaktor Steuerung", "Zentrales Kundenregister", "HVAC-Kühlsystem"]
+    threats = ["Ransomware-Verschlüsselung", "Daten-Exfiltration", "Integritäts-Manipulation"]
+    
+    st.session_state.game_state = "intro"
+    st.session_state.asset = random.choice(assets)
+    st.session_state.threat = random.choice(threats)
+    st.session_state.stability = 100
+    st.session_state.turn = 0
+    st.session_state.log = []
+
+def add_log(msg):
+    st.session_state.log.insert(0, f"LOG_{st.session_state.turn:02d}: {msg}")
+    st.session_state.turn += 1
+
+# --- GAME ENGINE ---
+
+# SIDEBAR: STATS
 with st.sidebar:
-    st.title("📟 System-Monitor")
-    st.metric("Netzwerk-Stabilität", f"{st.session_state.security_level}%")
-    st.progress(st.session_state.security_level / 100)
-    
-    st.subheader("Ereignis-Protokoll")
-    for log in st.session_state.logs[:5]:
-        st.caption(log)
-    
-    if st.button("System Reset"):
-        for key in st.session_state.keys():
-            del st.session_state[key]
-        st.rerun()
+    st.title("📟 TERMINAL")
+    st.write(f"**Target:** {st.session_state.asset}")
+    st.write(f"**Status:** {'ALARM' if st.session_state.stability < 50 else 'STABIL'}")
+    st.progress(st.session_state.stability / 100)
+    st.divider()
+    for entry in st.session_state.log:
+        st.caption(entry)
 
-# --- HAUPT-LOGIK ---
-
-# 1. INTRO
-if st.session_state.step == "intro":
-    st.title("🌊 Operation Deepwater")
-    st.subheader("Standort: Wasserwerk 'Aqua-Tech' Nord")
-    st.markdown("""
-    Sie wurden als IT-Sicherheitsbeauftragter mitten in der Nacht gerufen. 
-    Das Fernwartungssystem der Chlorierungsanlage zeigt seltsame Anomalien. 
-    
-    Ein unbekannter Akteur scheint Zugriff auf das System **'HydroControl 4.0'** zu haben. 
-    Dieses System verwaltet Chemikalien-Dosierungen und Kundendaten für die Abrechnung.
+# SCREEN 1: INTRO
+if st.session_state.game_state == "intro":
+    st.title("⚡ OPERATION: SILENT SHIELD")
+    st.write(f"""
+    Willkommen, Administrator. 
+    Ein unbekannter Akteur hat das System **{st.session_state.asset}** infiltriert. 
+    Die Bedrohung wird als **{st.session_state.threat}** eingestuft.
     """)
     
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Schutzbedarfsanalyse starten"):
-            st.session_state.step = "analysis"
-            st.rerun()
-    with col2:
-        st.warning("⚠️ Die Zeit läuft. Jede Sekunde ohne Analyse erhöht das Restrisiko.")
-
-# 2. SCHUTZBEDARFSANALYSE (Interaktive Tabelle)
-elif st.session_state.step == "analysis":
-    st.header("📋 Phase 1: Schutzbedarfsanalyse (Maximumsprinzip)")
-    st.write("Bewerten Sie die Risiken für 'HydroControl 4.0' gemäß BSI-Standard.")
-    
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        v_conf = st.select_slider("Vertraulichkeit (Kundendaten)", ["Normal", "Hoch", "Sehr Hoch"], value="Normal")
-    with c2:
-        v_int = st.select_slider("Integrität (Chemikalien-Mix)", ["Normal", "Hoch", "Sehr Hoch"], value="Normal")
-    with c3:
-        v_avail = st.select_slider("Verfügbarkeit (Wasserfluss)", ["Normal", "Hoch", "Sehr Hoch"], value="Normal")
-
-    if st.button("Analyse bestätigen"):
-        # Logik basierend auf PDFs: Integrität beim Wasserwerk ist lebenswichtig (Sehr Hoch)
-        if v_int == "Sehr Hoch":
-            st.success("Korrekt! Eine Manipulation der Chemikalien (Integrität) ist existenzbedrohend (Leib und Leben).")
-            st.session_state.security_level += 10
-        else:
-            st.error("Gefährliche Fehleinschätzung! Wenn die Integrität der Mischverhältnisse sinkt, besteht Lebensgefahr.")
-            st.session_state.security_level -= 20
-        
-        log_event(f"Analyse abgeschlossen. Gesamt-Schutzbedarf: SEHR HOCH (Maximumsprinzip).")
-        st.session_state.step = "incident_loop"
+    if st.button("Initialisiere BSI-Notfallprotokoll"):
+        st.session_state.game_state = "analysis"
         st.rerun()
 
-# 3. DER INCIDENT (Dynamische Entscheidungen)
-elif st.session_state.step == "incident_loop":
-    st.header("🚨 KRITISCHER ZWISCHENFALL")
-    st.error("WARNUNG: Die Sensorwerte für den Chlorgehalt steigen unkontrolliert an, obwohl die Anzeige im Dashboard 'Normal' meldet!")
+# SCREEN 2: SCHUTZBEDARFSANALYSE MIT ZUFALLS-FEEDBACK
+elif st.session_state.game_state == "analysis":
+    st.header("🔍 Schutzbedarfsfeststellung (Maximum-Prinzip)")
+    st.write(f"Bestimmen Sie den Schutzbedarf für {st.session_state.asset} basierend auf der CIA-Triade.")
     
-    st.write("Das ist ein klassischer Angriff auf die **Integrität**. Was tun Sie?")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        c = st.selectbox("Vertraulichkeit", ["Normal", "Hoch", "Sehr Hoch"])
+    with col2:
+        i = st.selectbox("Integrität", ["Normal", "Hoch", "Sehr Hoch"])
+    with col3:
+        a = st.selectbox("Verfügbarkeit", ["Normal", "Hoch", "Sehr Hoch"])
+
+    if st.button("Analyse einloggen"):
+        # Logik-Check: Integrität und Verfügbarkeit sind bei kritischen Systemen meist 'Sehr Hoch'
+        correct_guess = (i == "Sehr Hoch" or a == "Sehr Hoch")
+        
+        if correct_guess:
+            add_log("Analyse korrekt. Ressourcen priorisiert.")
+            st.session_state.stability += 5
+        else:
+            impact = random.randint(15, 30)
+            add_log(f"Fehleinschätzung! Systemstabilität sinkt um {impact}%.")
+            st.session_state.stability -= impact
+        
+        st.session_state.game_state = "action"
+        st.rerun()
+
+# SCREEN 3: DYNAMISCHE ABWEHR
+elif st.session_state.game_state == "action":
+    st.header("🚨 RESPONSE PHASE")
+    st.write(f"Der Angriff (**{st.session_state.threat}**) erreicht die nächste Stufe!")
+    
+    # Zufällige Ereignisse generieren
+    events = [
+        "Ein Administrator-Konto wurde kompromittiert!",
+        "Der Backup-Server antwortet nicht mehr.",
+        "Mitarbeiter melden seltsame Pop-ups an ihren Terminals."
+    ]
+    st.warning(random.choice(events))
     
     col1, col2 = st.columns(2)
-    
     with col1:
-        if st.button("Not-Abschaltung des Systems (Verfügbarkeit opfern)"):
-            log_event("System-Shutdown initiiert.")
-            st.session_state.security_level += 20
-            st.session_state.step = "consequence_shutdown"
-            st.rerun()
+        if st.button("Isoliere das betroffene Netzwerk-Segment"):
+            if random.random() > 0.3: # 70% Erfolgswahrscheinlichkeit
+                add_log("Isolation erfolgreich. Ausbreitung gestoppt.")
+                st.session_state.stability += 10
+            else:
+                add_log("Isolation fehlgeschlagen. Angreifer nutzt Tunnel.")
+                st.session_state.stability -= 25
             
     with col2:
-        if st.button("Passwort des Admin-Accounts ändern"):
-            log_event("Passwort geändert. Angriff läuft weiter.")
-            st.session_state.security_level -= 30
-            st.session_state.step = "consequence_fail"
-            st.rerun()
+        if st.button("Führe Forensik-Scan durch (PDCA-Zyklus)"):
+            add_log("Scan läuft... Schwachstelle identifiziert.")
+            st.session_state.stability -= 5 # Zeitverlust kostet Stabilität
+            st.info("Schwachstelle gefunden: Ungepatchter VPN-Zugang.")
 
-# 4. KONSEQUENZEN
-elif st.session_state.step == "consequence_shutdown":
-    st.success("✅ Kluge Entscheidung!")
-    st.write("""
-    Durch die Priorisierung der **Integrität** vor der **Verfügbarkeit** haben Sie eine Vergiftung des Trinkwassers verhindert. 
-    Zwar ist die Stadt nun ohne Wasser, aber die Gefahr für Leib und Leben ist gebannt.
-    """)
-    if st.button("Abschlussbericht erstellen"):
-        st.session_state.step = "final"
+    if st.session_state.stability <= 0:
+        st.session_state.game_state = "game_over"
+        st.rerun()
+    elif st.session_state.turn > 5:
+        st.session_state.game_state = "victory"
         st.rerun()
 
-elif st.session_state.step == "consequence_fail":
-    st.error("❌ KATASTROPHE")
-    st.write("""
-    Eine Passwortänderung reicht nicht aus, wenn der Angreifer bereits eine Backdoor im System hat. 
-    Während Sie tippten, wurde eine toxische Menge Chlor freigesetzt. Das Restrisiko hat sich realisiert.
-    """)
-    if st.button("Vor den Untersuchungsausschuss treten"):
-        st.session_state.step = "final"
+# SCREEN 4: GAME OVER / VICTORY
+elif st.session_state.game_state == "game_over":
+    st.error("💀 SYSTEM COLLAPSE")
+    st.write("Das Restrisiko hat das Unternehmen zerstört. Die Integrität der Daten ist verloren.")
+    if st.button("Neustart"):
+        del st.session_state['game_state']
         st.rerun()
 
-# 5. FINALE & REFLEKTION
-elif st.session_state.step == "final":
-    st.title("🏁 Mission beendet")
-    st.metric("Finaler Sicherheits-Score", f"{st.session_state.security_level}%")
-    
-    st.subheader("Ihre Learnings nach Dr. Yahiatène:")
-    st.write("- **Maximumsprinzip:** Sie haben gelernt, dass der höchste Einzelwert den Gesamtschutzbedarf bestimmt.")
-    st.write("- **CIA-Triade im Konflikt:** Manchmal muss man die Verfügbarkeit opfern, um die Integrität zu retten.")
-    st.write("- **Mitwirkungspflicht:** Technik allein rettet nicht, es sind Ihre Entscheidungen.")
-    
-    if st.button("Neues Szenario (Reset)"):
-        for key in st.session_state.keys():
-            del st.session_state[key]
+elif st.session_state.game_state == "victory":
+    st.balloons()
+    st.success("🏆 ANGRIFF ABGEWEHRT")
+    st.write(f"Sie haben das System mit einer Rest-Stabilität von {st.session_state.stability}% gerettet.")
+    st.write("Wichtige TOMs (Technisch-Organisatorische Maßnahmen) wurden dokumentiert.")
+    if st.button("Neue Schicht antreten"):
+        del st.session_state['game_state']
         st.rerun()
