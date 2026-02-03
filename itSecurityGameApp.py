@@ -1,5 +1,4 @@
 import streamlit as st
-import time
 
 # --- INITIALISIERUNG ---
 if 'adventure' not in st.session_state:
@@ -8,157 +7,132 @@ if 'adventure' not in st.session_state:
         'budget': 150000,
         'cia': {'C': 100, 'I': 100, 'A': 100},
         'day': 1,
-        'history': []
+        'unlocked_info': []
     }
 
-# --- HILFSFUNKTIONEN ---
 def navigate(target):
     st.session_state.adventure['node'] = target
     st.rerun()
 
-def explain(term):
+# --- GLOSSAR ENGINE (Basierend auf deinen PDFs) ---
+def get_definition(term):
     definitions = {
-        "CIA-Triade": "Die drei Grundwerte der Informationssicherheit: **C**onfidentiality (Vertraulichkeit), **I**ntegrity (Integrität) und **A**vailability (Verfügbarkeit).",
-        "TOM": "**T**echnisch-**O**rganisatorische **M**aßnahmen: Konkrete Schritte zum Schutz (z.B. Backups, Zäune, Schulungen).",
-        "PDCA-Zyklus": "Der Deming-Zyklus (**P**lan-**D**o-**C**heck-**A**ct) zur kontinuierlichen Verbesserung der Sicherheit.",
-        "DSGVO": "EU-Verordnung. Verstöße können Bußgelder bis zu 4% des Jahresumsatzes nach sich ziehen.",
-        "Maximumsprinzip": "BSI-Vorgabe: Der höchste Schutzbedarf einer Komponente bestimmt das Gesamtniveau des Systems.",
-        "Restrisiko": "Das verbleibende Risiko nach Umsetzung aller Maßnahmen. 100% Sicherheit gibt es nicht."
+        "47 Elementare Gefährdungen": "Das BSI-Kompendium listet genau 47 Standard-Bedrohungen (G 0.1 bis G 0.47), wie Feuer, Malware oder Fehlbedienung.",
+        "Mitwirkungspflicht": "Sicherheit ist nicht nur IT-Sache. Mitarbeiter müssen Gefahren melden und Richtlinien einhalten (z.B. bei Phishing).",
+        "Restrisiko": "Selbst mit den besten TOMs bleibt ein Risiko (z.B. Zero-Day-Exploits). 100% Sicherheit gibt es nicht.",
+        "Bausteine": "Das IT-Grundschutz-Kompendium ist in Bausteine unterteilt (z.B. 'Allgemeiner Client' oder 'Serverraum').",
+        "Maximumsprinzip": "Der Schutzbedarf eines Systems richtet sich nach dem höchsten Schutzbedarf einer seiner Komponenten.",
+        "DSGVO-Strafmaß": "Verstöße können bis zu 20 Mio. € oder 4% des weltweiten Jahresumsatzes kosten."
     }
-    return definitions.get(term, "Definition folgt in Kürze.")
+    return definitions.get(term, "")
 
 # --- UI STYLING ---
 st.markdown("""
     <style>
-    .stApp { background-color: #0d1117; color: #00ff41; font-family: 'Courier New', monospace; }
-    .terminal-window { 
-        background: #010409; 
-        border: 2px solid #00ff41; 
-        padding: 25px; 
-        border-radius: 5px; 
-        min-height: 250px;
-        box-shadow: 0 0 15px rgba(0, 255, 65, 0.2);
-    }
-    .glossary-card { 
-        background: #161b22; 
-        border-left: 5px solid #58a6ff; 
-        padding: 10px; 
-        margin-top: 20px;
-        color: #c9d1d9;
-    }
-    .stButton>button { 
-        background-color: #21262d; 
-        color: #00ff41; 
-        border: 1px solid #30363d; 
-        width: 100%; 
-        transition: 0.3s;
-    }
-    .stButton>button:hover { border-color: #00ff41; background-color: #00ff41; color: #000; }
+    .stApp { background-color: #0d1117; color: #c9d1d9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .terminal { background: #010409; border: 2px solid #58a6ff; padding: 20px; border-radius: 10px; color: #adbac7; line-height: 1.6; }
+    .stat-bar { background: #161b22; border: 1px solid #30363d; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+    .glossary-box { border-left: 4px solid #f2cc60; background: #1c1c1c; padding: 10px; margin: 10px 0; font-size: 0.9em; }
     </style>
     """, unsafe_allow_html=True)
 
 # --- STORY NODES ---
 nodes = {
     'START': {
-        'title': "📡 BRIEFING: OPERATION SILVER-DATA",
-        'text': "Du bist der neue CISO bei 'Silver-Data'. Hacker haben die Goldpreise im Webshop manipuliert. Die Geschäftsführung verlangt eine sofortige Strategie. Wie beginnst du?",
+        'title': "🏢 Willkommen bei Silver-Data",
+        'text': """Du startest als CISO. Dein Chef, Herr Müller, ist skeptisch: 'Warum brauchen wir das BSI-Gedöns? Reicht nicht ein Virenscanner?'
+        Er zeigt dir das <b>IT-Grundschutzkompendium</b>. Weißt du, wie viele <b>elementare Gefährdungen</b> dort gelistet sind, die wir beachten müssen?""",
         'options': [
-            ("Schutzbedarfsanalyse nach BSI einleiten", "ANALYSIS"),
-            ("Einfach neue Hardware kaufen", "FAIL_HARDWARE")
+            ("Es sind genau 47 elementare Gefährdungen.", "STEP_ANALYSIS"),
+            ("Es gibt über 1000 verschiedene Gefährdungen.", "FAIL_KNOWLEDGE")
         ],
-        'glossary': ["CIA-Triade", "PDCA-Zyklus"]
+        'glossary': ["47 Elementare Gefährdungen"]
     },
-    'FAIL_HARDWARE': {
-        'title': "⚠️ AKTIONISMUS-FEHLER",
-        'text': "Du kaufst blind Firewalls. Die Geschäftsführung fragt: 'Was genau schützen wir damit?'. Da du keine Analyse hast, wird das Budget gestrichen. Du musst planvoller vorgehen!",
-        'options': [("Zurück zum Planen (PDCA)", "START")],
-        'glossary': ["PDCA-Zyklus"]
+    'FAIL_KNOWLEDGE': {
+        'title': "❌ Wissenslücke",
+        'text': "Herr Müller schüttelt den Kopf. 'Wenn Sie nicht einmal die Basis des BSI kennen, wie wollen Sie uns schützen?' Du musst dich erst belesen.",
+        'options': [("Nochmal versuchen", "START")]
     },
-    'ANALYSIS': {
-        'title': "🕵️ TAG 1: DAS MAXIMUMSPRINZIP",
-        'text': "Du untersuchst die Datenbestände: \n1. Kundendaten (IBANs/Adressen) \n2. Interne Preislisten für Schmuck. \n\nWie stufst du das System ein?",
+    'STEP_ANALYSIS': {
+        'title': "🕵️ Tag 1: Die Schichten des Grundschutzes",
+        'text': """Gut! Wir analysieren den Baustein <b>'Allgemeiner Client'</b>. Ein Mitarbeiter nutzt ein Tablet für den Webshop. 
+        Du musst den Schutzbedarf festlegen. Die Kundendaten sind kritisch (DSGVO!), die Preislisten existenzwichtig. 
+        Welches Prinzip wendest du an?""",
         'options': [
-            ("Sehr Hoch - Ein Ausfall oder Leak wäre fatal.", "DAY2_PHISHING"),
-            ("Normal - Wir sind ein kleiner Händler.", "FAIL_ANALYSIS")
+            ("Das Maximumsprinzip (Höchster Wert zählt)", "STEP_PHISHING"),
+            ("Das Durchschnittsprinzip (Mittelwert der Ziele)", "FAIL_ANALYSIS")
         ],
-        'glossary': ["Maximumsprinzip", "DSGVO"],
-        'on_enter': lambda: st.session_state.adventure.update({'day': 1})
+        'glossary': ["Maximumsprinzip", "Bausteine", "DSGVO-Strafmaß"]
     },
     'FAIL_ANALYSIS': {
-        'title': "📉 FEHLANALYSE",
-        'text': "Wegen der Finanzdaten ist 'Normal' zu wenig. Die Versicherung kündigt den Schutz. Du musst die Risiken ernster nehmen!",
-        'options': [("Analyse wiederholen", "ANALYSIS")]
+        'title': "📉 Sicherheitsrisiko",
+        'text': "Durch das Durchschnittsprinzip unterschätzt du die Gefahr für die Kundendaten. Ein Audit deckt das auf. Korrigiere deine Analyse!",
+        'options': [("Zurück zur Analyse", "STEP_ANALYSIS")]
     },
-    'DAY2_PHISHING': {
-        'title': "📧 TAG 2: DER PHISHING-ANGRIFF",
-        'text': "Eine Mail erreicht die Buchhaltung: 'Bestätigen Sie Ihren Barclays-Token'. Ein Mitarbeiter klickt. Die Vertraulichkeit ist gefährdet! Deine Reaktion?",
+    'STEP_PHISHING': {
+        'title': "📧 Tag 2: Die Barclays-Falle",
+        'text': """Eine täuschend echte Mail von 'Barclays' erreicht das Team. 'Token-Update erforderlich!'. 
+        Ein Admin will klicken. Du hast keine Technik, die das stoppt. Worauf musst du setzen?""",
         'options': [
-            ("Sofortige Awareness-Schulung (TOM)", "DAY3_RANSOMWARE"),
-            ("Nichts tun, ist nur eine Mail", "FAIL_PHISHING")
+            ("Auf die Mitwirkungspflicht (Awareness)", "STEP_RESIDUAL"),
+            ("Auf das Restrisiko hoffen", "FAIL_PHISHING")
         ],
-        'glossary': ["TOM", "CIA-Triade"],
-        'on_enter': lambda: st.session_state.adventure.update({'day': 2, 'budget': st.session_state.adventure['budget'] + 20000})
+        'glossary': ["Mitwirkungspflicht"]
     },
     'FAIL_PHISHING': {
-        'title': "💀 DATEN-G AU",
-        'text': "Hacker exfiltrieren alle IBANs. Die Aufsichtsbehörde verhängt ein Bußgeld von 4% des Umsatzes. Silver-Data ist bankrott.",
-        'options': [("Simulation neu starten", "START")],
-        'glossary': ["DSGVO"]
+        'title': "💀 System-Kollaps",
+        'text': "Ohne Schulung klickt der Admin. Hacker stehlen die Zugangsdaten. Die Integrität ist bei 0%. Silver-Data ist am Ende.",
+        'options': [("Neustart", "START")]
     },
-    'DAY3_RANSOMWARE': {
-        'title': "👾 TAG 3: DIE VERSCHLÜSSELUNG",
-        'text': "Morgens sind alle Server gesperrt. Ransomware! Die Verfügbarkeit ist bei 0%. Hast du ein Backup-Konzept?",
+    'STEP_RESIDUAL': {
+        'title': "🛡️ Tag 3: Das Unvermeidbare",
+        'text': """Alle TOMs sind aktiv. Firewalls stehen, Mitarbeiter sind geschult. Herr Müller fragt: 'Sind wir jetzt zu 100% sicher?' 
+        Wie lautet deine fachliche Antwort als Fachinformatiker?""",
         'options': [
-            ("3-2-1 Backup-Strategie anwenden", "WIN_GAME"),
-            ("Das Lösegeld bezahlen", "FAIL_MONEY")
+            ("Nein, es bleibt immer ein Restrisiko.", "WIN_GAME"),
+            ("Ja, mit BSI-Grundschutz sind wir unbesiegbar.", "FAIL_REALISM")
         ],
-        'on_enter': lambda: st.session_state.adventure.update({'day': 3})
-    },
-    'WIN_GAME': {
-        'title': "🏆 MISSION ERFOLGREICH",
-        'text': "Die Backups funktionieren! Silver-Data ist nach 4 Stunden wieder online. Die Geschäftsführung befördert dich zum Security Director. Du hast den PDCA-Zyklus perfekt umgesetzt.",
-        'options': [("Nochmal spielen", "START")],
         'glossary': ["Restrisiko"]
     },
-    'FAIL_MONEY': {
-        'title': "💸 FINANZIELLER RUIN",
-        'text': "Du zahlst das Lösegeld, aber die Hacker schicken keinen Key. Das Budget ist weg und die Daten auch. Game Over.",
-        'options': [("Neustart", "START")]
+    'FAIL_REALISM': {
+        'title': "⚠️ Größenwahn",
+        'text': "Kurz darauf trifft ein Zero-Day-Exploit das System. Da du keine Notfallpläne hattest (weil du dich 'sicher' fühltest), bricht alles zusammen.",
+        'options': [("Zurück zu Tag 3", "STEP_RESIDUAL")]
+    },
+    'WIN_GAME': {
+        'title': "🏆 Zertifizierung bestanden!",
+        'text': "Herr Müller ist beeindruckt. Du hast nicht nur die CIA-Ziele geschützt, sondern auch verstanden, dass Sicherheit ein PDCA-Zyklus ist. Silver-Data ist sicher (soweit möglich).",
+        'options': [("Nochmal spielen", "START")],
+        'glossary': ["Restrisiko", "47 Elementare Gefährdungen"]
     }
 }
 
 # --- ENGINE ---
-# Sicherheits-Check für den Key
-if st.session_state.adventure['node'] not in nodes:
-    st.session_state.adventure['node'] = 'START'
-
 current_node = nodes[st.session_state.adventure['node']]
 
-# Dashboard-Leiste
-col_stat1, col_stat2, col_stat3 = st.columns(3)
-col_stat1.metric("💰 Budget", f"{st.session_state.adventure['budget']:,} €")
-col_stat2.metric("🗓️ Tag", st.session_state.adventure['day'])
-col_stat3.metric("📈 Status", "Aktiv")
+# Sidebar Stats
+with st.sidebar:
+    st.header("📊 CISO-Status")
+    st.metric("Budget", f"{st.session_state.adventure['budget']} €")
+    st.metric("Sicherheits-Level", f"{st.session_state.adventure['cia']['C']}%")
+    
+    st.divider()
+    st.info("Nutze die Glossar-Infos unten im Text, um die richtigen Entscheidungen zu treffen!")
+
+# Hauptfenster
+st.title("📟 Operation: Silver-Data Chronicles")
+st.write(f"### {current_node['title']}")
+
+st.markdown(f"<div class='terminal'>{current_node['text']}</div>", unsafe_allow_html=True)
+
+# Glossar-Einblendungen (Interaktives Lernen)
+if 'glossary' in current_node:
+    for term in current_node['glossary']:
+        st.markdown(f"<div class='glossary-box'><b>{term}:</b> {get_definition(term)}</div>", unsafe_allow_html=True)
 
 st.write("---")
 
-# Szenen-Darstellung
-st.subheader(current_node['title'])
-st.markdown(f"<div class='terminal-window'>{current_node['text']}</div>", unsafe_allow_html=True)
-
-# Glossar-Einblendung
-if 'glossary' in current_node:
-    with st.container():
-        st.markdown("<div class='glossary-card'><b>Glossar für dieses Kapitel:</b></div>", unsafe_allow_html=True)
-        for term in current_node['glossary']:
-            st.markdown(f"**{term}:** {explain(term)}")
-
-# Optionen
-st.write("### Deine Entscheidung:")
+# Buttons für Entscheidungen
 for label, target in current_node['options']:
     if st.button(label):
-        if 'on_enter' in nodes[target]:
-            nodes[target]['on_enter']()
         navigate(target)
-
-# Hilfsgrafiken
