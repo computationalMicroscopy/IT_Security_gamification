@@ -19,7 +19,7 @@ def init_game(force=False):
             'day': 1, 'ap': 5, 'budget': 2500000,
             'cia': {'C': 70, 'I': 70, 'A': 70},
             'risk': 30, 'xp': 0, 'layers': 0, 'mode': 'tactical',
-            'logs': ["> ARCHITEKTUR-MODUL AKTIVIERT. SYSTEME BEREIT."],
+            'logs': ["> SIEM-CORE INITIALISIERT. MONITORING STARTET."],
             'active_incidents': [], 'game_over': False, 'won': False,
             'ai_knowledge': 0.1, 'p_audit': 0.05,
             'ceo_trust': 50, 'last_q_shuffled': []
@@ -35,7 +35,7 @@ def add_log(msg, type="info"):
     g['logs'].insert(0, f"{icon} [Tag {g['day']}] {msg}")
 
 # --- 3. UI & STYLING ---
-st.set_page_config(page_title="CISO Command 10.0", layout="wide")
+st.set_page_config(page_title="CISO Command 10.1", layout="wide")
 st.markdown("""
     <style>
     @keyframes glitch { 0% { text-shadow: 2px 0 red; } 50% { text-shadow: -2px 0 blue; } 100% { text-shadow: 2px 0 red; } }
@@ -47,20 +47,20 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. SZENARIO, ZIEL & ANLEITUNG ---
+# --- 4. SZENARIO & ANLEITUNG ---
 with st.expander("📂 MISSIONS-AKTE: OPERATION GOLDEN SHIELD", expanded=True):
     st.markdown("""
     ### 🏦 Das Szenario
-    Die **Silver-Data GmbH** ist ein führender Logistikdienstleister für den physischen Goldhandel. Als neu ernannter CISO verwaltest du eine hochkomplexe IT-Infrastruktur, die Tresorsysteme, Transaktionsdatenbanken und Kundenportale vernetzt. Die Bedrohungslage ist extrem: Staatliche Akteure und kriminelle Syndikate nutzen **Bayessche Angriffs-KIs**, um Schwachstellen in Echtzeit zu finden.
+    Die **Silver-Data GmbH** ist ein führender Logistikdienstleister für den physischen Goldhandel. Als neu ernannter CISO verwaltest du eine hochkomplexe IT-Infrastruktur. Die Bedrohungslage ist extrem: Staatliche Akteure nutzen **Bayessche Angriffs-KIs**, um Schwachstellen in Echtzeit zu finden.
 
     ### 🎯 Dein Ziel
     Erreiche das **Tag-25-Audit** mit einer stabilen CIA-Triade. Du musst die **Compliance** (GoBD, EU AI Act, DSGVO) wahren und eine **Defense-in-Depth-Architektur** (BSI) aufbauen. Das Spiel endet sofort, wenn das Vertrauen des Vorstands (Trust) erlischt oder eine Säule der CIA-Triade auf 0% fällt.
 
-    ### 🛠️ Bau-Strategie
-    Nutze deine Aktionspunkte (AP) weise. Du kannst nun nicht nur Schichten stapeln, sondern gezielt in **Redundanz, Verschlüsselung oder Sensorik** investieren, um spezifische CIA-Werte zu pushen.
+    ### 🛠️ SIEM-System Erklärung
+    Ein **SIEM (Security Information and Event Management)** ist das Gehirn deines SOCs (Security Operations Center). Es sammelt Logs aus allen Systemen, analysiert sie in Echtzeit und erkennt Anomalien (z.B. Brute-Force Angriffe), bevor diese Schaden anrichten. Im Spiel blendet es die Bayes-KI, indem es ihre Angriffsmuster vorzeitig aufdeckt.
     """)
 
-st.markdown("<div class='hud-header'><h1 class='glitch-text'>🛡️ CISO COMMAND v10.0</h1></div>", unsafe_allow_html=True)
+st.markdown("<div class='hud-header'><h1 class='glitch-text'>🛡️ CISO COMMAND v10.1</h1></div>", unsafe_allow_html=True)
 
 # --- 5. DASHBOARD ---
 m1, m2, m3, m4, m5 = st.columns(5)
@@ -103,18 +103,18 @@ with col_main:
         if c_a.button("USV & Redundanz (100k | 1 AP)"):
             if g['ap'] >= 1 and g['budget'] >= 100000:
                 g['ap'] -= 1; g['budget'] -= 100000; g['cia']['A'] += 15
-                add_log("Hochverfügbarkeit gestärkt (+15% A).", "build"); st.rerun()
-        if c_b.button("Ende-zu-Ende Verschlüsselung (120k | 1 AP)"):
+                add_log("USV (Unterbrechungsfreie Stromversorgung) aktiv.", "build"); st.rerun()
+        if c_b.button("Kryptografie (120k | 1 AP)"):
             if g['ap'] >= 1 and g['budget'] >= 120000:
                 g['ap'] -= 1; g['budget'] -= 120000; g['cia']['C'] += 15
-                add_log("Vertraulichkeit durch Krypto erhöht (+15% C).", "build"); st.rerun()
+                add_log("E2EE (End-to-End Encryption) aktiv.", "build"); st.rerun()
 
     with t3:
         st.write("Überwachung & KI-Abwehr.")
         if st.button("SIEM-System implementieren (200k | 2 AP)"):
             if g['ap'] >= 2 and g['budget'] >= 200000:
                 g['ap'] -= 2; g['budget'] -= 200000; g['ai_knowledge'] = max(0, g['ai_knowledge'] - 0.2)
-                add_log("SIEM aktiv: Bayes-KI geblendet.", "ai"); st.rerun()
+                add_log("SIEM (Security Information & Event Management) gebucht.", "ai"); st.rerun()
 
     with t4:
         if st.button("Reporting & Audit-Check (1 AP)"):
@@ -164,18 +164,18 @@ if g['mode'] == 'audit':
 
 # --- 8. ÜBERARBEITETES GLOSSAR (VOLLSTÄNDIG) ---
 with st.sidebar:
-    st.title("📖 CISO-LEXIKON v10")
+    st.title("📖 CISO-LEXIKON v10.1")
     st.markdown("---")
     search = st.text_input("Begriff suchen...")
     intel_content = {
-        "BSI IT-Grundschutz": "Standardwerk für IT-Sicherheit. Basiert auf Schichten und Bausteinen zur Absicherung von Geschäftsprozessen.",
-        "CIA-Triade": "Schutzziel-Definition: Vertraulichkeit (Confidentiality), Integrität (Integrity) und Verfügbarkeit (Availability).",
-        "EU AI Act": "Verordnung zur Regulierung von KI. Unterscheidet Risikoklassen. Social Scoring ist verboten (unannehmbar).",
-        "GoBD": "Grundsätze zur ordnungsgemäßen Führung und Aufbewahrung von Büchern in elektronischer Form. Fokus auf Unveränderbarkeit.",
-        "Maximumprinzip": "Regel im BSI-Grundschutz: Das System übernimmt den Schutzbedarf der kritischsten Einzelkomponente.",
-        "PDCA-Zyklus": "Managementmethode: Plan (Planen), Do (Umsetzen), Check (Prüfen), Act (Anpassen).",
-        "DSGVO Art. 83": "Definiert Strafmaß für Datenschutzverstöße: Bis zu 20 Mio. € oder 4% des weltweiten Jahresumsatzes.",
-        "Defense-in-Depth": "Sicherheitsstrategie mit mehreren, voneinander unabhängigen Schutzschichten."
+        "SIEM": "Security Information and Event Management. Ein System zur Aggregation und Analyse von Log-Daten aus verschiedenen Quellen, um Sicherheitsvorfälle (Incidents) in Echtzeit zu erkennen.",
+        "BSI IT-Grundschutz": "Ein Standard für Informationssicherheits-Managementsysteme (ISMS). Nutzt Schichten zur Tiefenverteidigung.",
+        "CIA-Triade": "Die drei Schutzziele: Vertraulichkeit (Verschlüsselung), Integrität (Unveränderbarkeit) und Verfügbarkeit (Ausfallsicherheit).",
+        "EU AI Act": "Gesetz zur Regulierung von KI. Untersagt Manipulation und Social Scoring.",
+        "GoBD": "Vorgaben für die IT-gestützte Buchführung. Fordert Revisionssicherheit und Unveränderbarkeit.",
+        "USV": "Unterbrechungsfreie Stromversorgung. Schützt die Verfügbarkeit (A) bei Netzausfällen.",
+        "Maximumprinzip": "Sicherheitsniveau richtet sich nach der kritischsten Komponente im Netzverbund.",
+        "PDCA-Zyklus": "Managementprozess: Plan (Planen), Do (Umsetzen), Check (Messen), Act (Optimieren)."
     }
     for k, v in intel_content.items():
         if not search or search.lower() in k.lower():
