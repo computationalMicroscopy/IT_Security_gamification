@@ -1,161 +1,173 @@
 import streamlit as st
-import time
 
-# --- INITIALISIERUNG DES SPIELZUSTANDS ---
-if 'adventure' not in st.session_state:
-    st.session_state.adventure = {
-        'node': 'START',
+# --- STATE INITIALISIERUNG ---
+if 'game' not in st.session_state:
+    st.session_state.game = {
+        'node': 'ACT1_START',
         'budget': 200000,
-        'cia': {'C': 100, 'I': 100, 'A': 100},
-        'score': 0,
+        'rep': 100,
         'day': 1,
         'inventory': [],
-        'logs_analysed': False
+        'flags': {}
     }
 
-def navigate(target):
-    st.session_state.adventure['node'] = target
+def nav(target):
+    st.session_state.game['node'] = target
     st.rerun()
 
-# --- FACH-GLOSSAR (Die harten Fakten aus den PDFs) ---
-def get_glossary(term):
-    defs = {
-        "10 Schichten": "Die Systematik des BSI-Grundschutzes umfasst 10 Schichten (nicht 8!), in die die Bausteine unterteilt sind.",
-        "GoBD": "Grundsätze zur ordnungsgemäßen Führung und Aufbewahrung von Büchern, Aufzeichnungen und Unterlagen in elektronischer Form.",
-        "Authentizität": "Nach BSI ein Teilziel der Integrität. Es stellt sicher, dass der Absender auch wirklich derjenige ist, der er vorgibt zu sein.",
-        "Elementare Gefährdungen": "Es gibt exakt 47 (G 0.1 bis G 0.47). Sie bilden die Basis jeder Risikoanalyse.",
-        "Art. 83 DSGVO": "Regelt die Geldbußen: Bis zu 20 Mio. Euro oder 4% des gesamten weltweit erzielten Jahresumsatzes.",
-        "Mitwirkungspflicht": "Mitarbeiter sind verpflichtet, aktiv an der Sicherheit mitzuwirken (Meldung von Vorfällen, Awareness)."
-    }
-    return defs.get(term, "Definition wird geladen...")
+# --- FACHWISSEN-DATENBANK (Referenz auf deine PDFs) ---
+KNOWLEDGE = {
+    "10_SCHICHTEN": "Die Systematik des BSI-Grundschutzes umfasst exakt 10 Schichten (Dok. 16, Aufgabe 2d).",
+    "47_GEF": "Es gibt 47 elementare Gefährdungen (G 0.1 bis G 0.47) im IT-GSK (Dok. 16, Abs. I).",
+    "GOBD": "Grundsätze zur ordnungsgemäßen Führung und Aufbewahrung von Büchern in elektronischer Form (Dok. 13).",
+    "DSGVO_FINE": "Bußgelder bis zu 20 Mio. € oder 4% des weltweiten Jahresumsatzes (Dok. 15, Aufgabe E).",
+    "AUTHENTIZITAET": "Authentizität ist nach BSI ein Teilziel der Integrität (Dok. 16, Aufgabe 2e).",
+    "PDCA": "Plan-Do-Check-Act: Der Deming-Zyklus zur Weiterentwicklung der Sicherheit (Dok. 16).",
+    "MAX_PRINZIP": "Der Gesamtschutzbedarf richtet sich nach der höchsten Kategorie (Dok. 12, S. 24)."
+}
 
-# --- UI DESIGN ---
-st.set_page_config(page_title="CISO Simulator 2026", layout="wide")
+# --- UI STYLE ---
 st.markdown("""
     <style>
-    .stApp { background-color: #0b0e14; color: #c9d1d9; font-family: 'Consolas', monospace; }
-    .terminal-window { border: 2px solid #58a6ff; padding: 20px; background: #161b22; border-radius: 10px; }
-    .stat-card { background: #0d1117; border: 1px solid #30363d; padding: 10px; border-radius: 5px; text-align: center; }
-    .glossary-item { color: #f2cc60; font-size: 0.9em; margin-bottom: 5px; }
+    .stApp { background-color: #0d1117; color: #c9d1d9; font-family: 'Consolas', monospace; }
+    .terminal { border: 2px solid #58a6ff; padding: 20px; background: #161b22; border-radius: 10px; border-left: 10px solid #58a6ff; }
+    .stat-box { background: #010409; border: 1px solid #30363d; padding: 10px; border-radius: 5px; text-align: center; }
+    .glossary { background: #1c2128; border: 1px solid #f2cc60; padding: 10px; color: #f2cc60; font-size: 0.85em; margin-top: 15px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- STORY NODES ---
-nodes = {
-    'START': {
-        'title': "🚀 Phase 1: Die Übernahme",
-        'text': """Du startest als CISO bei der Silver-Data GmbH. Der Chef, Herr Müller, ist nervös. 
-        Er hat gehört, dass das <b>IT-Grundschutzkompendium</b> die Basis für alles ist. 
-        Er testet dich direkt: 'Sagen Sie mal, wie viele Schichten umfasst die Systematik des BSI-Grundschutzes eigentlich?'""",
+# --- SPIEL-LOGIK (DIE AKTE) ---
+NODES = {
+    # AKT 1: GRUNDLAGEN & SYSTEMATIK (Dokument 16)
+    'ACT1_START': {
+        'title': "🛠️ Akt 1: Die BSI-Zertifizierung",
+        'text': """Willkommen im CISO-Office. Bevor wir Silver-Data schützen, prüft der IT-Leiter dein Wissen:
+        'Wie viele Schichten umfasst die Systematik des BSI-Grundschutzes laut aktuellem Kompendium?'""",
         'options': [
-            ("Es sind genau 10 Schichten.", "STEP_47"),
-            ("Es sind 8 Basis-Bausteine.", "FAIL_SYSTEMATIK")
+            ("Es sind 10 Schichten.", "ACT1_47"),
+            ("Es sind 8 Basis-Bausteine.", "ACT1_FAIL_1")
         ],
-        'glossary': ["10 Schichten"]
+        'glossary': ["10_SCHICHTEN"]
     },
-    'FAIL_SYSTEMATIK': {
-        'title': "⚠️ Wissenslücke",
-        'text': "Herr Müller runzelt die Stirn. 'Das steht aber anders im Kompendium!' (Dokument 16, Aufgabe 2d). Du musst die Schichten erst richtig lernen.",
-        'options': [("Nochmal versuchen", "START")]
+    'ACT1_FAIL_1': {
+        'title': "❌ Systemfehler",
+        'text': "Falsch! Dokument 16, Aufgabe 2d ist hier eindeutig. Ohne die korrekte Systematik bricht die Analyse zusammen.",
+        'options': [("Nochmal lernen", "ACT1_START")]
     },
-    'STEP_47': {
-        'title': "🏢 Phase 2: Die Gefährdungslage",
-        'text': """Korrekt! Herr Müller ist beeindruckt. Jetzt geht es ans Eingemachte. 
-        'Wir müssen die Risiken bewerten. Wie viele <b>elementare Gefährdungen</b> müssen wir laut BSI mindestens gegen unsere Bausteine prüfen?'""",
+    'ACT1_47': {
+        'title': "🔥 Die elementaren Gefährdungen",
+        'text': """Korrekt. Der IT-Leiter nickt. 'Und gegen wie viele <b>elementare Gefährdungen</b> (G 0.1 - G 0.x) müssen wir unsere Bausteine mindestens prüfen?'""",
         'options': [
-            ("Wir müssen alle 47 elementaren Gefährdungen prüfen.", "STEP_ANALYSIS_SANIPLAN"),
-            ("Es reicht, die Top 10 Bedrohungen zu prüfen.", "FAIL_47")
+            ("Gegen 47 Gefährdungen.", "ACT2_SANIPLAN"),
+            ("Gegen 14 TOMs.", "ACT1_FAIL_2")
         ],
-        'glossary': ["Elementare Gefährdungen"]
+        'glossary': ["47_GEF"]
     },
-    'STEP_ANALYSIS_SANIPLAN': {
-        'title': "🕵️ Phase 3: Schutzbedarfsanalyse (SaniPlan 2.0 / Silver-Data)",
-        'text': """Du analysierst das System 'Silver-Data ERP'. Wir haben: 
-        1. Kundendaten (IBANs/Tür-Codes) -> Rechtlich kritisch (DSGVO).
-        2. Preislisten -> Finanziell kritisch (GoBD).
-        Welchen Schutzbedarf legst du nach dem <b>Maximumsprinzip</b> für die <b>Integrität</b> fest?""",
+    'ACT1_FAIL_2': {
+        'title': "❌ Begriffsverwirrung",
+        'text': "TOMs sind Maßnahmen, keine Gefährdungen! Schau in Abschnitt I von Dokument 16 nach.",
+        'options': [("Zurück", "ACT1_47")]
+    },
+
+    # AKT 2: SCHUTZBEDARFSANALYSE (Dokument 13 & 14)
+    'ACT2_SANIPLAN': {
+        'title': "🕵️ Akt 2: Szenario 'SaniPlan 2.0'",
+        'text': """Du sollst nun das Handwerker-System 'SaniPlan 2.0' bewerten. 
+        Dort liegen Kundendaten (Tür-Codes) und Rechnungen. 
+        Was passiert, wenn die IBANs in den Rechnungen unbemerkt verändert werden?""",
         'options': [
-            ("Hoch/Sehr Hoch - Wegen GoBD und finanziellen Risiken.", "STEP_DOSSIER"),
-            ("Normal - Wir können Fehler später korrigieren.", "FAIL_GOBD")
+            ("Verlust der Integrität (Finanzielle Schäden nach GoBD).", "ACT2_MAX"),
+            ("Verlust der Authentizität (Hardware-Schaden).", "ACT2_FAIL_1")
         ],
-        'glossary': ["GoBD", "Maximumsprinzip", "Authentizität"]
+        'glossary': ["GOBD", "AUTHENTIZITAET"]
     },
-    'STEP_DOSSIER': {
-        'title': "📟 Phase 4: Operation Silver-Data (Log-Analyse)",
-        'text': """Ein Alarm schrillt! Ein 'Log-Dossier' wurde erstellt. Du siehst folgendes Fragment: 
-        <code>'SELECT * FROM users WHERE id = 1 OR 1=1; --'</code> und eine IP aus einem fremden Netz.
-        Was liegt hier vor und welches Schutzziel ist primär bedroht?""",
+    'ACT2_MAX': {
+        'title': "⚖️ Das Maximum-Prinzip",
+        'text': """Die Kundendaten sind 'Hoch' eingestuft (DSGVO), der Lagerbestand 'Normal'. 
+        Wie lautet der <b>Gesamtschutzbedarf</b> für das System?""",
         'options': [
-            ("SQL-Injection - Bedrohung der Vertraulichkeit (C).", "STEP_PHISHING_BARCLAYS"),
-            ("DDoS-Angriff - Bedrohung der Verfügbarkeit (A).", "FAIL_DOSSIER")
+            ("Gesamtbedarf: Hoch (Maximum-Prinzip).", "ACT3_SILVER"),
+            ("Gesamtbedarf: Normal (Mittelwert-Prinzip).", "ACT2_FAIL_2")
+        ],
+        'glossary': ["MAX_PRINZIP"]
+    },
+    'ACT2_FAIL_2': {
+        'title': "📉 Haftungsrisiko",
+        'text': "Falsch! Das BSI schreibt das Maximum-Prinzip vor. Würdest du 'Normal' wählen, haftest du bei einem Datenleck persönlich!",
+        'options': [("Korrigieren", "ACT2_MAX")]
+    },
+
+    # AKT 3: OPERATION SILVER-DATA (Dokument 12)
+    'ACT3_SILVER': {
+        'title': "📟 Akt 3: Operation Silver-Data",
+        'text': """Montagmorgen. Krisensitzung. Ein Log-Dossier zeigt: 
+        <code>'Fragment: clarknoset@gmail.com - Betreff: Barclays Update'</code>.
+        Welcher Cyberangriff wird hier vorbereitet?""",
+        'options': [
+            ("Social Engineering / Phishing.", "ACT3_DSGVO"),
+            ("SQL-Injection / Datenbank-Angriff.", "ACT3_FAIL_1")
+        ],
+        'on_enter': lambda: st.session_state.game.update({'day': 3})
+    },
+    'ACT3_DSGVO': {
+        'title': "🇪🇺 Die Rechtslage",
+        'text': """Ein Mitarbeiter hat geklickt. 5.000 Kundendatensätze sind im Darknet. 
+        Herr Müller fragt panisch: 'Was droht uns schlimmstenfalls laut DSGVO Art. 83?'""",
+        'options': [
+            ("Bis zu 4% des Jahresumsatzes.", "ACT4_PDCA"),
+            ("Eine Abmahnung durch das BSI.", "ACT3_FAIL_2")
+        ],
+        'glossary': ["DSGVO_FINE"]
+    },
+
+    # AKT 4: NACHHALTIGKEIT (Dokument 15 & 16)
+    'ACT4_PDCA': {
+        'title': "🔄 Akt 4: Der PDCA-Zyklus",
+        'text': """Wir müssen den Schaden beheben und das System dauerhaft verbessern. 
+        Welcher Zyklus wird hierfür im IT-Grundschutz angewendet?""",
+        'options': [
+            ("Der Deming-Zyklus (Plan-Do-Check-Act).", "ACT4_FINAL"),
+            ("Das Wasserfall-Modell.", "ACT4_FAIL_1")
+        ],
+        'glossary': ["PDCA"]
+    },
+    'ACT4_FINAL': {
+        'title': "🛡️ Das Restrisiko",
+        'text': """Alles ist umgesetzt. Müller fragt: 'Sind wir jetzt absolut sicher?'""",
+        'options': [
+            ("Nein, es bleibt ein Restrisiko (Zero-Day/Mensch).", "WIN"),
+            ("Ja, 100% Sicherheit ist nun erreicht.", "ACT4_FAIL_2")
         ]
     },
-    'STEP_PHISHING_BARCLAYS': {
-        'title': "📧 Phase 5: Der menschliche Faktor",
-        'text': """Die Barclays-Phishing-Mail (Dokument 12) macht die Runde. Ein Mitarbeiter fragt: 
-        'Muss ich das melden? Ich hab doch nur kurz draufgeklickt.'
-        Auf welches Prinzip des Grundschutzes verweist du?""",
-        'options': [
-            ("Auf die Mitwirkungspflicht der Mitarbeiter.", "STEP_RESTRISIKO"),
-            ("Auf das Prinzip der totalen technischen Überwachung.", "FAIL_MITWIRKUNG")
-        ],
-        'glossary': ["Mitwirkungspflicht", "Art. 83 DSGVO"]
-    },
-    'STEP_RESTRISIKO': {
-        'title': "🛡️ Phase 6: Das Restrisiko",
-        'text': """Du hast Firewalls (T), Schulungen (O) und Backups installiert. 
-        Die Geschäftsführung will wissen: 'Sind wir jetzt zu 100% sicher vor Cyberangriffen?'""",
-        'options': [
-            ("Nein, es bleibt immer ein Restrisiko (z.B. Zero-Day).", "WIN_GAME"),
-            ("Ja, wir sind nun absolut sicher.", "FAIL_RESTRISIKO")
-        ],
-        'glossary': ["Restrisiko"]
-    },
-    'WIN_GAME': {
-        'title': "🏆 ZERTIFIZIERUNG ERREICHT!",
-        'text': """Glückwunsch! Du hast Silver-Data erfolgreich abgesichert.
-        Du hast alle Hürden des BSI-Grundschutzes genommen:
-        - Die 10 Schichten korrekt identifiziert.
-        - Das Maximumsprinzip angewandt.
-        - Die 47 Gefährdungen berücksichtigt.
-        - Die DSGVO-Bußgelder (4% Umsatz) verhindert.""",
-        'options': [("Simulation neu starten", "START")]
+    'WIN': {
+        'title': "🏆 CISO-ZERTIFIKAT ERHALTEN",
+        'text': "Du hast alle 4 Akte überstanden und die Inhalte von Lernfeld 4 gemeistert!",
+        'options': [("Neustart", "ACT1_START")]
     }
 }
 
 # --- ENGINE ---
-# Fallback für Node-Wechsel
-if st.session_state.adventure['node'] not in nodes:
-    st.session_state.adventure['node'] = 'START'
+c1, c2, c3 = st.columns(3)
+c1.metric("💰 Budget", f"{st.session_state.game['budget']:,}€")
+c2.metric("🗓️ Tag", st.session_state.game['day'])
+c3.metric("📈 Reputation", f"{st.session_state.game['rep']}%")
 
-current = nodes[st.session_state.adventure['node']]
+st.divider()
 
-# Dashboard
-c1, c2, c3, c4 = st.columns(4)
-c1.markdown(f"<div class='stat-card'>💰 BUDGET<br>{st.session_state.adventure['budget']:,}€</div>", unsafe_allow_html=True)
-c2.markdown(f"<div class='stat-card'>🛡️ CIA-LEVEL<br>{st.session_state.adventure['cia']['C']}%</div>", unsafe_allow_html=True)
-c3.markdown(f"<div class='stat-card'>📚 WISSEN<br>LF 4 Komplett</div>", unsafe_allow_html=True)
-c4.markdown(f"<div class='stat-card'>⚖️ COMPLIANCE<br>DSGVO OK</div>", unsafe_allow_html=True)
-
-st.write("---")
-
-# Hauptinhalt
+current = NODES[st.session_state.game['node']]
 st.subheader(current['title'])
-st.markdown(f"<div class='terminal-window'>{current['text']}</div>", unsafe_allow_html=True)
+st.markdown(f"<div class='terminal'>{current['text']}</div>", unsafe_allow_html=True)
 
-# Glossar-Einblendungen
 if 'glossary' in current:
-    st.write("### 📖 Fachwissen für diese Phase:")
-    for g in current['glossary']:
-        st.markdown(f"<div class='glossary-item'><b>{g}:</b> {get_glossary(g)}</div>", unsafe_allow_html=True)
+    with st.container():
+        st.write("---")
+        for g in current['glossary']:
+            st.markdown(f"<div class='glossary'>💡 <b>Wissen:</b> {KNOWLEDGE[g]}</div>", unsafe_allow_html=True)
 
-# Optionen
 st.write("### Deine Entscheidung:")
 for label, target in current['options']:
     if st.button(label):
-        # Einfaches Budget-Handling pro Schritt
-        st.session_state.adventure['budget'] -= 5000
-        navigate(target)
+        if 'on_enter' in NODES[target]: NODES[target]['on_enter']()
+        nav(target)
 
-# Grafiken zur Unterstützung
-st.write("---")
+st.divider()
