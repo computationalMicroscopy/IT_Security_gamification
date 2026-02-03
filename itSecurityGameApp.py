@@ -2,191 +2,167 @@ import streamlit as st
 import random
 import time
 
-# --- KONFIGURATION ---
-st.set_page_config(page_title="Cyber-Storm: Silver-Data", layout="wide", page_icon="🕵️")
-
-# --- CUSTOM CSS (Hacker Terminal) ---
-st.markdown("""
-    <style>
-    .stApp { background-color: #0d1117; color: #58a6ff; font-family: 'Courier New', Courier, monospace; }
-    .stButton>button { border: 1px solid #238636; background-color: #21262d; color: #3fb950; font-weight: bold; height: 3em; }
-    .stButton>button:hover { background-color: #238636; color: white; }
-    .log-box { background-color: #010409; border: 1px solid #30363d; padding: 15px; border-radius: 5px; height: 400px; overflow-y: auto; color: #d1d5da; font-size: 0.9em; }
-    .stat-card { background-color: #161b22; border: 1px solid #30363d; padding: 10px; border-radius: 8px; text-align: center; }
-    .critical { color: #f85149; font-weight: bold; }
-    </style>
-    """, unsafe_allow_html=True)
-
-# --- INITIALISIERUNG (Zustandsverwaltung) ---
-if 'state' not in st.session_state:
-    st.session_state.state = {
+# --- INITIALISIERUNG DER ENGINE ---
+if 'game_state' not in st.session_state:
+    st.session_state.game_state = {
         'phase': 'setup',
         'day': 1,
         'budget': 150000,
         'cia': {'C': 100, 'I': 100, 'A': 100},
-        'inventory': [],
-        'logs': ["> SYSTEM INITIALIZED: Operation Silver-Data gestartet."],
-        'max_prinzip_score': 0,
-        'incidents_solved': 0,
-        'reputation': 100
+        'reputation': 100,
+        'inventory': set(),
+        'logs': ["> SYSTEM BOOT COMPLETE. WELCOME, CISO."],
+        'threat_history': [],
+        'unlocked_achievements': []
     }
 
 def add_log(msg, level="info"):
-    prefix = "✅" if level == "success" else "🚨" if level == "danger" else "ℹ️"
-    st.session_state.state['logs'].insert(0, f"{prefix} Tag {st.session_state.state['day']}: {msg}")
+    colors = {"info": "#58a6ff", "warn": "#d29922", "danger": "#f85149", "success": "#3fb950"}
+    color = colors.get(level, "#58a6ff")
+    st.session_state.game_state['logs'].insert(0, f"<span style='color:{color}'>[T-{st.session_state.game_state['day']}] {msg}</span>")
 
-# --- SPIEL-PHASEN ---
+# --- UI LAYOUT ---
+st.set_page_config(page_title="Cyber Defense: Operation Silver-Data", layout="wide")
 
-# PHASE 1: SCHUTZBEDARFSANALYSE (BSI-STANDARD)
-if st.session_state.state['phase'] == 'setup':
-    st.title("🛡️ Schritt 1: Schutzbedarfsfeststellung (BSI IT-Grundschutz)")
-    st.markdown("""
-    Willkommen, CISO. Bevor wir die Verteidigung hochfahren, müssen wir das System **'Silver-Data ERP'** bewerten.
-    Hier lagern Kundendaten (IBANs, Adressen) und die zentralen Gold-Preislisten.
-    """)
+st.markdown("""
+    <style>
+    .stApp { background-color: #0d1117; color: #c9d1d9; }
+    .stat-card { background: #161b22; border: 1px solid #30363d; padding: 15px; border-radius: 10px; text-align: center; }
+    .log-container { background: #010409; border: 1px solid #30363d; padding: 15px; height: 450px; overflow-y: auto; font-family: monospace; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- SPIELPHASEN ---
+
+# PHASE 1: STRATEGISCHES SETUP
+if st.session_state.game_state['phase'] == 'setup':
+    st.title("🕵️ Phase 1: Die Schutzbedarfsanalyse")
+    st.info("Szenario: 'Operation Silver-Data'. Analysiere den E-Commerce Shop für Silberschmuck.")
     
     col1, col2, col3 = st.columns(3)
-    with col1: c_lvl = st.select_slider("Vertraulichkeit (Confidentiality)", ["Normal", "Hoch", "Sehr Hoch"])
-    with col2: i_lvl = st.select_slider("Integrität (Integrity)", ["Normal", "Hoch", "Sehr Hoch"])
-    with col3: a_lvl = st.select_slider("Verfügbarkeit (Availability)", ["Normal", "Hoch", "Sehr Hoch"])
+    c_val = col1.select_slider("Vertraulichkeit (Kundendaten)", ["Normal", "Hoch", "Sehr Hoch"])
+    i_val = col2.select_slider("Integrität (Preislisten/Goldwert)", ["Normal", "Hoch", "Sehr Hoch"])
+    a_val = col3.select_slider("Verfügbarkeit (Webshop-Uptime)", ["Normal", "Hoch", "Sehr Hoch"])
     
     if st.button("Analyse finalisieren"):
-        # Das Maximum-Prinzip aus dem PDF (Seite 24/26)
-        if c_lvl == "Sehr Hoch" and i_lvl == "Sehr Hoch":
-            st.session_state.state['max_prinzip_score'] = 100
-            st.session_state.state['budget'] += 20000
-            add_log("Analyse korrekt (Maximumsprinzip). Zusatzbudget bewilligt.", "success")
+        # Logik basierend auf BSI Maximumsprinzip
+        if c_val == "Sehr Hoch" and i_val == "Sehr Hoch":
+            st.session_state.game_state['budget'] += 50000
+            add_log("Maximumsprinzip korrekt angewendet. Risikobudget bewilligt.", "success")
         else:
-            st.session_state.state['budget'] -= 20000
-            add_log("Fehlanalyse! Budgetkürzung durch die Revision.", "danger")
-        
-        st.session_state.state['phase'] = 'main'
+            st.session_state.game_state['budget'] -= 20000
+            add_log("Fehlanalyse! Die Revision hat das Budget gekürzt.", "danger")
+        st.session_state.game_state['phase'] = 'main'
         st.rerun()
 
-# PHASE 2: DAS OPERATIVE SPIEL (Der PDCA-Zyklus)
-elif st.session_state.state['phase'] == 'main':
-    # --- DASHBOARD ---
-    st.title(f"🕵️ Operation Silver-Data | Tag {st.session_state.state['day']}")
-    
-    d1, d2, d3, d4, d5 = st.columns(5)
-    d1.markdown(f"<div class='stat-card'>💰 BUDGET<br><b>{st.session_state.state['budget']:,} €</b></div>", unsafe_allow_html=True)
-    d2.markdown(f"<div class='stat-card'>🔒 C<br><b>{st.session_state.state['cia']['C']}%</b></div>", unsafe_allow_html=True)
-    d3.markdown(f"<div class='stat-card'>🛠️ I<br><b>{st.session_state.state['cia']['I']}%</b></div>", unsafe_allow_html=True)
-    d4.markdown(f"<div class='stat-card'>⚡ A<br><b>{st.session_state.state['cia']['A']}%</b></div>", unsafe_allow_html=True)
-    d5.markdown(f"<div class='stat-card'>📈 REP<br><b>{st.session_state.state['state']['reputation']}%</b></div>", unsafe_allow_html=True)
-    
+# PHASE 2: DAS OPERATIVE DASHBOARD
+elif st.session_state.game_state['phase'] == 'main':
+    # Dashboard Header
+    m1, m2, m3, m4, m5 = st.columns(5)
+    m1.markdown(f"<div class='stat-card'>💰 BUDGET<br><h3>{st.session_state.game_state['budget']:,}€</h3></div>", unsafe_allow_html=True)
+    m2.markdown(f"<div class='stat-card'>🔒 C<br><h3>{st.session_state.game_state['cia']['C']}%</h3></div>", unsafe_allow_html=True)
+    m3.markdown(f"<div class='stat-card'>🛠️ I<br><h3>{st.session_state.game_state['cia']['I']}%</h3></div>", unsafe_allow_html=True)
+    m4.markdown(f"<div class='stat-card'>⚡ A<br><h3>{st.session_state.game_state['cia']['A']}%</h3></div>", unsafe_allow_html=True)
+    m5.markdown(f"<div class='stat-card'>📈 REP<br><h3>{st.session_state.game_state['reputation']}%</h3></div>", unsafe_allow_html=True)
+
     st.divider()
-    
-    col_left, col_right = st.columns([2, 1])
-    
-    with col_left:
-        # PDCA: PLAN & DO (TOMs kaufen)
-        st.subheader("🛠️ Technisch-Organisatorische Maßnahmen (TOMs)")
-        
+
+    left, right = st.columns([2, 1])
+
+    with left:
+        st.subheader("🛠️ PDCA-Zyklus: TOM-Marktplatz")
+        # Erweiterter Katalog basierend auf BSI elementaren Gefährdungen
         toms = {
-            "G 0.15: Abhörsichere Räume": {"cost": 35000, "cia": "C", "type": "T"},
-            "G 0.18: Backup-System (3-2-1)": {"cost": 25000, "cia": "A", "type": "T"},
-            "G 0.19: Awareness-Schulung": {"cost": 15000, "cia": "C", "type": "O"},
-            "G 0.22: Redundante Firewall": {"cost": 40000, "cia": "A", "type": "T"},
-            "G 0.28: Digitale Signaturen": {"cost": 20000, "cia": "I", "type": "T"},
-            "G 0.45: DSGVO Compliance Audit": {"cost": 30000, "cia": "C", "type": "O"}
+            "ISO 27001 ISMS": {"cost": 50000, "cia": "ALL", "desc": "Der Goldstandard. Erhöht alle Werte permanent."},
+            "Awareness Kampagne": {"cost": 12000, "cia": "C", "desc": "Schutz vor Phishing (Barclays-Szenario)."},
+            "Backup Cluster (Offline)": {"cost": 25000, "cia": "A", "desc": "Sichert Verfügbarkeit gegen Ransomware."},
+            "WAF (SQL-Injection Filter)": {"cost": 18000, "cia": "I", "desc": "Verhindert Manipulation der Schmuckpreise."},
+            "DSGVO Rechtsberatung": {"cost": 15000, "cia": "C", "desc": "Minimiert Bußgelder nach Art. 83 DSGVO."},
+            "IDS/IPS Sensoren": {"cost": 22000, "cia": "I", "desc": "Detektiert Integritätsbrüche in Echtzeit."}
         }
+
+        cols = st.columns(2)
+        for i, (name, d) in enumerate(toms.items()):
+            with cols[i % 2]:
+                if name in st.session_state.game_state['inventory']:
+                    st.button(f"✅ {name}", disabled=True, key=f"btn_{name}")
+                else:
+                    if st.button(f"Investiere {d['cost']}€\n({name})", key=f"btn_{name}"):
+                        if st.session_state.game_state['budget'] >= d['cost']:
+                            st.session_state.game_state['budget'] -= d['cost']
+                            st.session_state.game_state['inventory'].add(name)
+                            if d['cia'] == "ALL":
+                                for k in st.session_state.game_state['cia']: st.session_state.game_state['cia'][k] = min(100, st.session_state.game_state['cia'][k] + 15)
+                            else:
+                                st.session_state.game_state['cia'][d['cia']] = min(100, st.session_state.game_state['cia'][d['cia']] + 20)
+                            add_log(f"TOM implementiert: {name}", "success")
+                            st.rerun()
+                        else:
+                            st.error("Budget unzureichend!")
+
+    with right:
+        st.subheader("📟 Incident Control")
+        log_html = "".join(st.session_state.game_state['logs'])
+        st.markdown(f"<div class='log-container'>{log_html}</div>", unsafe_allow_html=True)
         
-        c_tom1, c_tom2 = st.columns(2)
-        for i, (name, val) in enumerate(toms.items()):
-            current_col = c_tom1 if i % 2 == 0 else c_tom2
-            if name in st.session_state.state['inventory']:
-                current_col.button(f"✅ {name}", key=name, disabled=True)
-            else:
-                if current_col.button(f"Investiere {val['cost']}€\n({name})", key=name):
-                    if st.session_state.state['budget'] >= val['cost']:
-                        st.session_state.state['budget'] -= val['cost']
-                        st.session_state.state['inventory'].append(name)
-                        st.session_state.state['cia'][val['cia']] = min(100, st.session_state.state['cia'][val['cia']] + 20)
-                        add_log(f"TOM implementiert: {name}", "success")
-                        st.rerun()
-                    else:
-                        st.error("Budget reicht nicht aus!")
+        if st.button("⏭️ NÄCHSTER TAG (Simuliere Bedrohungen)"):
+            st.session_state.game_state['day'] += 1
+            st.session_state.game_state['budget'] += 7500 # Daily Revenue
+            
+            # --- RANDOM THREAT ENGINE ---
+            threat_roll = random.random()
+            
+            if threat_roll < 0.3: # Phishing (PDF Bezug)
+                add_log("BEDROHUNG: Phishing-Welle 'Barclays Update' detektiert!", "warn")
+                if "Awareness Kampagne" not in st.session_state.game_state['inventory']:
+                    st.session_state.game_state['cia']['C'] -= 35
+                    st.session_state.game_state['reputation'] -= 20
+                    add_log("SCHADEN: Mitarbeiter hat Token-Daten geleakt. Vertraulichkeit sinkt!", "danger")
+                else:
+                    add_log("ABGEWEHRT: Mitarbeiter haben verdächtige Mails gemeldet.", "success")
+            
+            elif threat_roll < 0.5: # Ransomware
+                add_log("BEDROHUNG: Crypto-Locker 'Silver-Lock' aktiv!", "warn")
+                if "Backup Cluster (Offline)" not in st.session_state.game_state['inventory']:
+                    st.session_state.game_state['cia']['A'] -= 45
+                    add_log("SCHADEN: Alle Preislisten verschlüsselt! Shop offline.", "danger")
+                else:
+                    add_log("ABGEWEHRT: Backups wurden innerhalb von 2h eingespielt.", "success")
+            
+            elif threat_roll < 0.7: # Integrität
+                add_log("BEDROHUNG: Manipulation der Gold-Preis-API!", "warn")
+                if "WAF (SQL-Injection Filter)" not in st.session_state.game_state['inventory']:
+                    st.session_state.game_state['cia']['I'] -= 30
+                    add_log("SCHADEN: Schmuckstücke für 0.00€ verkauft. Finanzieller Verlust!", "danger")
+                else:
+                    add_log("ABGEWEHRT: Angriff wurde durch WAF blockiert.", "success")
+            
+            # DSGVO Prüfung (Automatischer Check)
+            if st.session_state.game_state['cia']['C'] < 60:
+                fine = st.session_state.game_state['budget'] * 0.04
+                st.session_state.game_state['budget'] -= fine
+                add_log(f"DSGVO-STRAFE: Verstoß gegen Art. 83! Bußgeld: {fine:,.0f}€.", "danger")
 
-    with col_right:
-        st.subheader("📟 Incident Log (Check)")
-        log_html = "".join([f"<div>{l}</div>" for l in st.session_state.state['logs']])
-        st.markdown(f"<div class='log-box'>{log_html}</div>", unsafe_allow_html=True)
-        
-        # PDCA: ACT (Tag beenden & Simulation)
-        if st.button("⏭️ Nächster Tag (Check & Act)"):
-            st.session_state.state['day'] += 1
-            st.session_state.state['budget'] += 8000 # Täglicher Cashflow
-            
-            # --- ZUFALLS-EVENTS (BASIEREND AUF PDF-INHALTEN) ---
-            event = random.random()
-            
-            # 1. Phishing (Barclays-Szenario aus PDF)
-            if event < 0.25:
-                add_log("Angriff: Barclays-Phishing-Mail im Umlauf!", "danger")
-                if "G 0.19: Awareness-Schulung" not in st.session_state.state['inventory']:
-                    st.session_state.state['cia']['C'] -= 30
-                    add_log("Mitarbeiter hat Token-Daten eingegeben. Massiver Datenabfluss!", "danger")
-                else:
-                    st.session_state.state['reputation'] += 5
-                    add_log("Mitarbeiter hat die Mail gemeldet. Angriff gestoppt.", "success")
-            
-            # 2. Ransomware (Verfügbarkeit)
-            elif event < 0.45:
-                add_log("Angriff: Ransomware verschlüsselt ERP!", "danger")
-                if "G 0.18: Backup-System (3-2-1)" not in st.session_state.state['inventory']:
-                    st.session_state.state['cia']['A'] -= 45
-                    st.session_state.state['budget'] -= 10000
-                    add_log("Kein Backup gefunden. Lösegeldverhandlungen laufen...", "danger")
-                else:
-                    st.session_state.state['cia']['A'] = min(100, st.session_state.state['cia']['A'] + 10)
-                    add_log("Recovery erfolgreich durch Backup-Konzept.", "success")
-            
-            # 3. Manipulation (Silberschmuck-Preise)
-            elif event < 0.60:
-                add_log("Angriff: Integrität der Preislisten kompromittiert!", "danger")
-                if "G 0.28: Digitale Signaturen" not in st.session_state.state['inventory']:
-                    st.session_state.state['cia']['I'] -= 35
-                    add_log("Preise im Shop wurden auf 0.00€ gesetzt. Hoher Verlust!", "danger")
-                else:
-                    add_log("Signaturen-Prüfung hat Manipulation erkannt und gestoppt.", "success")
-
-            # 4. DSGVO-Keule (Rechtliches)
-            elif event < 0.75:
-                add_log("Audit: Landesdatenschutzbeauftragter prüft...", "info")
-                if st.session_state.state['cia']['C'] < 80 and "G 0.45: DSGVO Compliance Audit" not in st.session_state.state['inventory']:
-                    fine = st.session_state.state['budget'] * 0.04
-                    st.session_state.state['budget'] -= fine
-                    add_log(f"DSGVO-Bußgeld (Art. 83): {fine:,.0f}€ fällig!", "danger")
-                else:
-                    add_log("Compliance-Prüfung bestanden.", "success")
-
-            # --- WIN/LOSE CONDITIONS ---
-            if any(v <= 0 for v in st.session_state.state['cia'].values()) or st.session_state.state['budget'] <= 0:
-                st.session_state.state['phase'] = 'game_over'
-            
+            # Check Win/Loss
+            if any(v <= 0 for v in st.session_state.game_state['cia'].values()) or st.session_state.game_state['budget'] <= 0:
+                st.session_state.game_state['phase'] = 'over'
             st.rerun()
 
 # PHASE 3: GAME OVER
-elif st.session_state.state['phase'] == 'game_over':
-    st.error("💀 SYSTEM-KOLLAPS")
-    st.title("Insolvenz & Zertifikatsentzug")
-    st.write(f"Du hast das Unternehmen {st.session_state.state['day']} Tage lang geschützt.")
+elif st.session_state.game_state['phase'] == 'over':
+    st.error("💀 MISSION GESCHEITERT")
+    st.title("Unternehmens-Kollaps")
+    st.write(f"Du hast Silver-Data für {st.session_state.game_state['day']} Tage am Markt gehalten.")
     
-    st.subheader("Analyse der Niederlage:")
-    if st.session_state.state['budget'] <= 0:
-        st.write("- Finanzieller Ruin: Deine Sicherheitsmaßnahmen waren teurer als dein Ertrag oder Bußgelder haben dich ruiniert.")
-    else:
-        st.write("- Sicherheits-Versagen: Eines der Schutzziele (CIA) ist auf 0% gefallen. Die Operation Silver-Data ist gescheitert.")
-    
-    st.markdown("""
-    **Was du für die Prüfung mitnehmen musst:**
-    - **Integrität** ist bei Preislisten lebenswichtig.
-    - **Vertraulichkeit** schützt vor DSGVO-Bußgeldern.
-    - **Verfügbarkeit** sichert den Geschäftsbetrieb.
-    - **Restrisiko** ist niemals Null.
+    # Didaktische Zusammenfassung (Basierend auf PDFs)
+    st.info("""
+    **Was du lernen solltest:**
+    - Informationssicherheit ist ein Prozess (**PDCA-Zyklus**).
+    - Ohne **Integrität** sind deine Preislisten wertlos.
+    - Ohne **Vertraulichkeit** ruiniert dich die DSGVO.
+    - Ohne **Verfügbarkeit** verlierst du deine Kunden.
     """)
     
-    if st.button("Neue Instanz laden"):
-        del st.session_state['state']
+    if st.button("Neustart"):
+        del st.session_state['game_state']
         st.rerun()
