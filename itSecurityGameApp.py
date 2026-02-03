@@ -1,183 +1,178 @@
 import streamlit as st
 import random
+import time
 
-# --- 1. INITIALISIERUNG (Absolut sicher) ---
+# --- 1. INITIALISIERUNG ---
 def init_game(force=False):
     if 'game' not in st.session_state or force:
         st.session_state.game = {
-            'day': 1, 'ap': 5, 'budget': 2500000, 'ceo_trust': 50,
-            'cia': {'C': 60, 'I': 60, 'A': 60},
-            'stress': 0, 'risk': 40, 'xp': 0,
-            'staff': {'Admins': 1, 'Security': 0},
-            'layers': 0, 
-            'logs': ["> SYSTEM BOOT: Willkommen, Cyber-Rekrut!"],
-            'active_incidents': [],
-            'decisions_made': 0,
-            'game_over': False, 'won': False,
-            'mode': 'tactical',
-            'unlocked_tools': []
+            'day': 1, 'ap': 5, 'budget': 2000000, 'ceo_trust': 50,
+            'cia': {'C': 65, 'I': 65, 'A': 65},
+            'stress': 0, 'risk': 30, 'xp': 0,
+            'layers': 0, 'specialization': None,
+            'logs': ["> INITIALISIERUNG ABGESCHLOSSEN. SYSTEME BEREIT."],
+            'active_incidents': [], 'decisions_made': 0,
+            'game_over': False, 'won': False, 'mode': 'tactical'
         }
 
 init_game()
 g = st.session_state.game
 
 def add_log(msg, type="info"):
-    icons = {"info": "ℹ️", "warn": "⚠️", "error": "🚨", "lvl": "🆙"}
-    g['logs'].insert(0, f"{icons.get(type, '🔹')} [T-{g['day']}] {msg}")
+    icon = {"info": "🔹", "warn": "⚠️", "error": "🚨", "lvl": "⭐"}.get(type, "•")
+    g['logs'].insert(0, f"{icon} [Tag {g['day']}] {msg}")
 
-# --- 2. INTEL-DATENBANK (Dein Master-Wissen) ---
+# --- 2. INTEL-DATENBANK (UNGEKÜRZT) ---
 INTEL = {
-    "10 Schichten (BSI)": "Stell dir das wie eine Burg vor. Schicht 1 ist die Mauer (Infrastruktur), Schicht 10 ist der Tresor (Anwendung).",
-    "47 Gefährdungen": "Das sind die 'Endgegner' des BSI. Von G 0.1 (Feuer) bis G 0.47 (Hacker). Jede Schicht blockt andere Gegner ab.",
-    "Maximumprinzip": "Die schwächste Stelle, die am wichtigsten ist, bestimmt alles. Wenn deine App super sicher ist, aber der Server im Regen steht, hast du Schutzbedarf 'Hoch'.",
-    "GoBD & Integrität": "Integrität heißt: Niemand hat an den Daten gefummelt. Laut GoBD müssen Rechnungen 10 Jahre lang unveränderbar bleiben.",
-    "EU AI Act & Social Scoring": "Social Scoring ist 'Unannehmbar' (verboten). Wer Punkte für gutes Benehmen verteilt, fliegt raus!",
-    "PDCA-Zyklus": "Dein täglicher Rhythmus: Planen (Plan), Bauen (Do), Testen (Check), Verbessern (Act).",
-    "DSGVO Art. 83": "Die 'Todesstrafe' für Firmen: Bis zu 20 Mio. Euro Strafe bei Datenverlust."
+    "10 Schichten (BSI)": "Infrastruktur, Netz, IT-Systeme, Anwendungen, Prozesse etc. Jede Schicht reduziert die Risk Exposure.",
+    "47 Gefährdungen": "Elementare Bedrohungen (G 0.1 bis G 0.47) laut BSI. Jede Entscheidung kontert spezifische Gefährdungen.",
+    "Maximumprinzip": "Das Schutzniveau richtet sich nach dem Baustein mit dem höchsten Schutzbedarf (Dok. 12).",
+    "GoBD": "Grundsätze zur ordnungsgemäßen Buchführung. Fokus: Integrität und Unveränderbarkeit digitaler Daten.",
+    "EU AI Act": "Risikoklassen für KI. Social Scoring ist 'unannehmbar' und somit verboten.",
+    "DSGVO Art. 83": "Strafmaß: Bis zu 20 Mio. € oder 4% des weltweiten Vorjahresumsatzes.",
+    "PDCA-Zyklus": "Plan-Do-Check-Act. Der Standardprozess für Managementsysteme (ISO 27001 / BSI)."
 }
 
-# --- 3. UI STYLE (Cyberpunk & Scannable) ---
-st.set_page_config(page_title="CISO Command: Rookie Edition", layout="wide")
+# --- 3. UI & DESIGN ---
+st.set_page_config(page_title="CISO Tactical 4.0", layout="wide")
 st.markdown("""
     <style>
-    .stApp { background-color: #0d0d0d; color: #00ff41; font-family: 'Segoe UI', sans-serif; }
-    .status-card { background: #1a1a1a; border: 2px solid #00ff41; padding: 10px; border-radius: 10px; text-align: center; color: white; }
-    .terminal { background: #000; border: 1px solid #ff00ff; padding: 10px; height: 350px; overflow-y: auto; font-family: 'Courier New'; font-size: 0.9em; }
-    .action-btn { font-size: 1.2em !important; height: 3em !important; }
-    .cia-label { font-size: 1.1em; font-weight: bold; }
+    .stApp { background-color: #050a0f; color: #00e5ff; font-family: 'Consolas', monospace; }
+    .metric-card { background: #0f171e; border: 1px solid #00e5ff; padding: 15px; border-radius: 8px; text-align: center; }
+    .terminal-box { background: #000; border: 1px solid #ff00ff; padding: 15px; height: 350px; overflow-y: auto; font-size: 0.85em; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. SIDEBAR (Power-Ups & Wissen) ---
+# --- 4. SIDEBAR ---
 with st.sidebar:
-    st.title("🛡️ DEIN ARSENAL")
-    st.write(f"**Level:** {g['xp'] // 100} | **XP:** {g['xp']}")
+    st.title("📟 CORE INTEL")
+    st.write(f"**Status:** {'🟢 Stabil' if g['risk'] < 40 else '🔴 Kritisch'}")
+    st.progress(g['risk'] / 100)
     st.divider()
-    st.subheader("👨‍🔧 Crew-Status")
-    st.write(f"Admins: {'👤' * g['staff']['Admins']}")
-    st.write(f"Security: {'🕵️' * g['staff']['Security']}")
-    if st.button("Spezialist anheuern (250k €)"):
-        if g['budget'] >= 250000:
-            g['staff']['Security'] += 1; g['budget'] -= 250000; add_log("Neuer Security-Experte im Team!"); st.rerun()
-    st.divider()
-    st.subheader("📖 Intel-Lexikon")
-    search = st.text_input("Was bedeutet...?")
+    st.subheader("Lexikon (PDF-Wissen)")
+    search = st.text_input("Suche...")
     for k, v in INTEL.items():
         if not search or search.lower() in k.lower():
             with st.expander(k): st.write(v)
 
 # --- 5. DASHBOARD ---
-st.title("🎮 CISO Command: Silver-Data Defender")
-st.write("### Mission: Überlebe 25 Tage und bestehe das BSI-Audit!")
-
-c1, c2, c3, c4 = st.columns(4)
-c1.markdown(f"<div class='status-card'>💰 BUDGET<br><span style='font-size:1.5em'>{g['budget']:,} €</span></div>", unsafe_allow_html=True)
-c2.markdown(f"<div class='status-card'>⚡ AKTIONEN<br><span style='font-size:1.5em'>{g['ap']} / 5</span></div>", unsafe_allow_html=True)
-c3.markdown(f"<div class='status-card'>📈 CEO TRUST<br><span style='font-size:1.5em'>{g['ceo_trust']}%</span></div>", unsafe_allow_html=True)
-c4.markdown(f"<div class='status-card'>🗓️ TAG<br><span style='font-size:1.5em'>{g['day']} / 25</span></div>", unsafe_allow_html=True)
+st.title("🛡️ CISO Command: Silver-Data 2026")
+m1, m2, m3, m4 = st.columns(4)
+m1.markdown(f"<div class='metric-card'>💰 BUDGET<br><b style='font-size:1.5em'>{g['budget']:,} €</b></div>", unsafe_allow_html=True)
+m2.markdown(f"<div class='metric-card'>⚡ AKTIONEN<br><b style='font-size:1.5em'>{g['ap']} / 5</b></div>", unsafe_allow_html=True)
+m3.markdown(f"<div class='metric-card'>🗓️ TAG<br><b style='font-size:1.5em'>{g['day']} / 25</b></div>", unsafe_allow_html=True)
+m4.markdown(f"<div class='metric-card'>🏆 XP<br><b style='font-size:1.5em'>{g['xp']}</b></div>", unsafe_allow_html=True)
 
 st.divider()
 
-# --- CIA & PDCA Visuals ---
+# CIA PROGRESS
 
-
-cia_cols = st.columns(3)
-cia_names = {"C": "🔒 Vertraulichkeit", "I": "💎 Integrität", "A": "⚡ Verfügbarkeit"}
+c_cols = st.columns(3)
 for i, (k, v) in enumerate(g['cia'].items()):
-    cia_cols[i].markdown(f"<div class='cia-label'>{cia_names[k]}</div>", unsafe_allow_html=True)
-    cia_cols[i].progress(max(0, min(100, v)))
+    label = {"C": "🔒 Vertraulichkeit", "I": "💎 Integrität", "A": "⚡ Verfügbarkeit"}[k]
+    c_cols[i].write(f"**{label}: {v}%**")
+    c_cols[i].progress(max(0, min(100, v)))
 
 # --- 6. GAME OVER / WIN ---
 if g['game_over']:
-    st.error("💀 GAME OVER! Die Firma wurde gehackt. Die Admins haben gekündigt."); st.stop()
+    st.error("🚨 MISSION FEHLGESCHLAGEN. Die Silver-Data GmbH wurde vom Markt genommen."); st.stop()
 if g['won']:
-    st.balloons(); st.success("🏆 LEGENDÄR! Du hast das Audit mit Bravour bestanden!"); st.stop()
+    st.balloons(); st.success("🏆 AUDIT BESTANDEN! Du hast Silver-Data in ein digitales Fort verwandelt."); st.stop()
 
-# --- 7. TACTICAL CENTER ---
-left, right = st.columns([2, 1])
+# --- 7. DYNAMISCHES GAMEPLAY ---
+col_main, col_side = st.columns([2, 1])
 
-with left:
-    # INCIDENT MANAGEMENT
-    if g['active_incidents']:
-        st.subheader("🔥 KRITISCHE ALARME!")
-        for inc in g['active_incidents']:
-            if st.button(f"ANGRIFF ABWEHREN: {inc} (1 AP)", type="primary"):
-                if g['ap'] >= 1:
-                    g['ap'] -= 1; g['active_incidents'].remove(inc); g['xp'] += 50; g['decisions_made'] += 1
-                    g['cia']['I'] = min(100, g['cia']['I'] + 15); add_log(f"{inc} wurde zerschlagen!", "lvl"); st.rerun()
+with col_main:
+    # SPEZIALISIERUNGS-EVENT AN TAG 5
+    if g['day'] == 5 and g['specialization'] is None:
+        st.warning("📣 STRATEGISCHE ENTSCHEIDUNG ERFORDERLICH!")
+        st.write("Der Vorstand verlangt eine klare Marschrichtung. Das beeinflusst deine Tools!")
+        c_spec1, c_spec2 = st.columns(2)
+        if c_spec1.button("☁️ CLOUD FIRST (Fokus auf Flexibilität & AI)"):
+            g['specialization'] = 'Cloud'; g['budget'] += 200000; g['decisions_made'] += 1; st.rerun()
+        if c_spec2.button("🏰 ON-PREMISE (Fokus auf maximale Kontrolle)"):
+            g['specialization'] = 'OnPrem'; g['budget'] -= 100000; g['cia']['I'] += 10; g['decisions_made'] += 1; st.rerun()
+        st.stop()
 
-    # TACTICAL TABS
-    st.subheader("🛠️ Deine Strategie (PDCA)")
-    t1, t2, t3 = st.tabs(["🏗️ DO: Bauen", "🔍 CHECK: Testen", "⚖️ ACT: Regeln"])
+    # ACTION TABS (Variieren je nach Tag und Spezialisierung)
+    st.subheader("🛠️ Tactical Operations Center")
+    tabs = st.tabs(["🏗️ Do: Bauen", "🔍 Check: Audit", "⚖️ Act: Governance"])
     
-    with t1:
-        st.write("**BSI-Verteidigungsschichten**")
-        if st.button(f"Schicht {g['layers']+1} von 10 hochfahren (150k € | 2 AP)"):
-            if g['ap'] >= 2 and g['budget'] >= 150000 and g['layers'] < 10:
-                g['ap'] -= 2; g['budget'] -= 150000; g['layers'] += 1; g['xp'] += 100; g['decisions_made'] += 1
-                g['cia']['A'] += 10; g['cia']['I'] += 5; g['risk'] -= 5; add_log(f"Schicht {g['layers']} ist online!"); st.rerun()
+    with tabs[0]:
+        # Dynamischer Button-Text und Effekt
+        if g['layers'] < 10:
+            if st.button(f"BSI-Schicht {g['layers']+1}: {'Cloud-Security' if g['specialization']=='Cloud' else 'Hardware-Härtung'} (150k € | 2 AP)"):
+                if g['ap'] >= 2 and g['budget'] >= 150000:
+                    with st.status("Implementierung läuft..."):
+                        time.sleep(1)
+                        g['ap'] -= 2; g['budget'] -= 150000; g['layers'] += 1; g['xp'] += 100
+                        g['cia']['A'] += 12; g['risk'] -= 4; g['decisions_made'] += 1
+                    st.toast(f"Schicht {g['layers']} aktiv!", icon="✅"); st.rerun()
         
-        if st.button("Kaffee-Runde für Admins (Stress senken) (1 AP)"):
-            if g['ap'] >= 1:
-                g['ap'] -= 1; g['stress'] = max(0, g['stress'] - 20); g['decisions_made'] += 1
-                add_log("Die Admins sind wieder motiviert!"); st.rerun()
+        if g['specialization'] == 'Cloud':
+            if st.button("Serverless Patch Management (1 AP)"):
+                if g['ap'] >= 1: g['ap'] -= 1; g['cia']['A'] += 5; g['decisions_made'] += 1; add_log("Automatisches Patching aktiv."); st.rerun()
 
-    with t2:
-        if st.button("Großer Sicherheits-Scan (1 AP)"):
+    with tabs[1]:
+        st.write("Überprüfe deine Abwehr.")
+        if st.button("Deep Vulnerability Scan (1 AP)"):
             if g['ap'] >= 1:
                 g['ap'] -= 1; g['stress'] += 10; g['decisions_made'] += 1
-                if random.random() > (0.7 - g['staff']['Security']*0.1):
-                    g['active_incidents'].append(random.choice(["SQL-Injektion", "Ransomware", "G 0.18"]))
-                    add_log("Hacker entdeckt!", "error")
-                else: add_log("Systeme scheinen sauber."); st.rerun()
+                if random.random() > 0.6:
+                    g['active_incidents'].append(random.choice(["SQL-Injection", "Ransomware-Versuch"]))
+                    add_log("Bedrohung entdeckt!", "error")
+                else: add_log("Scan unauffällig."); st.rerun()
 
-    with t3:
-        if st.button("EU AI Act Check (1 AP)"):
-            if g['ap'] >= 1:
-                g['ap'] -= 1; g['decisions_made'] += 1; g['mode'] = 'event'; st.rerun()
+    with tabs[2]:
+        if st.button("KI-Projekt nach EU AI Act prüfen (1 AP)"):
+            if g['ap'] >= 1: g['ap'] -= 1; g['mode'] = 'quiz'; g['decisions_made'] += 1; st.rerun()
 
-with right:
-    st.subheader("📟 Log-Konsole")
-    log_content = "".join([f"<div style='margin-bottom:4px;'>{l}</div>" for l in g['logs']])
-    st.markdown(f"<div class='terminal'>{log_content}</div>", unsafe_allow_html=True)
+    # INCIDENT MANAGEMENT
+    if g['active_incidents']:
+        st.markdown("### 🚨 AKUTGEFAHR!")
+        for inc in g['active_incidents']:
+            with st.expander(f"GEFAHR: {inc}", expanded=True):
+                st.write("Sofortige Reaktion erforderlich (Kosten: 1 AP)")
+                if st.button(f"Gegenmaßnahme für {inc} einleiten"):
+                    if g['ap'] >= 1:
+                        g['ap'] -= 1; g['active_incidents'].remove(inc); g['cia']['I'] += 10; g['xp'] += 150
+                        add_log(f"{inc} neutralisiert."); st.rerun()
+
+with col_side:
+    st.subheader("📟 System-Logs")
+    log_box = "".join([f"<div style='margin-bottom:5px;'>{l}</div>" for l in g['logs']])
+    st.markdown(f"<div class='terminal-box'>{log_box}</div>", unsafe_allow_html=True)
     
     st.divider()
-    if st.button("🌞 TAG BEENDEN"):
-        # Übernacht-Events
+    with st.chat_message("assistant"):
+        st.write(f"**CEO:** 'Tag {g['day']}. Denken Sie an die GoBD-Konformität! Unser Ruf steht auf dem Spiel.'")
+    
+    if st.button("🌞 TAG BEENDEN", type="primary", use_container_width=True):
+        # TAGS-ENDE-LOGIK
         g['day'] += 1; g['ap'] = 5; g['stress'] = max(0, g['stress'] - 5)
-        for k in g['cia']: g['cia'][k] -= random.randint(3, 10)
+        for k in g['cia']: g['cia'][k] -= random.randint(4, 9)
+        if g['active_incidents']: g['cia']['I'] -= 20; add_log("Unbehandelte Incidents fressen Integrität!", "error")
+        
+        # RISIKO-MATRIX AKTUALISIEREN
+        
         
         if g['day'] > 25: g['won'] = True
-        if any(v <= 0 for v in g['cia'].values()) or g['budget'] <= 0 or g['stress'] >= 100: g['game_over'] = True
-        
-        # Alle 5 Tage ein "Boss-Event" (Audit)
-        if g['day'] % 5 == 0: g['mode'] = 'boss'
-        else: g['mode'] = 'tactical'
+        if any(v <= 0 for v in g['cia'].values()) or g['budget'] <= 0: g['game_over'] = True
         st.rerun()
 
-# --- 8. SPEZIAL-MODI (Events & Boss) ---
-if g['mode'] == 'event':
+# --- 8. QUIZ-MODUS (KEINE HINWEISE) ---
+if g['mode'] == 'quiz':
     st.markdown("---")
     with st.container():
-        st.subheader("🧩 Zufällige Begegnung!")
-        evs = [
-            ("Ein Praktikant will 'Social Scoring' für die Kantine einführen.", "Sofort verbieten (EU AI Act)", "Klingt lustig, machen wir"),
-            ("Was besagt das Maximumprinzip?", "Der höchste Schutzbedarf zählt", "Der günstigste Schutz zählt"),
-            ("GoBD-Prüfung: Wer darf Rechnungen nachträglich ändern?", "Niemand (Integrität!)", "Nur der Chef")
-        ]
-        text, o1, o2 = random.choice(evs)
-        st.info(text)
-        if st.button(o1):
-            g['xp'] += 150; g['ceo_trust'] += 10; g['mode'] = 'tactical'; add_log("Richtig entschieden!"); st.rerun()
-        if st.button(o2):
-            g['budget'] -= 200000; g['ceo_trust'] -= 20; g['mode'] = 'tactical'; add_log("Das war ein Fehler!", "error"); st.rerun()
-
-if g['mode'] == 'boss':
-    st.markdown("---")
-    st.subheader("👔 BOSS-FIGHT: Das Vorstands-Meeting!")
-    st.write("Der Vorstand will Ergebnisse sehen. Beantworte die Fachfrage richtig!")
-    q = "Was passiert laut DSGVO Art. 83 bei einem schweren Datenleck?"
-    if st.button("Bis zu 20 Mio. € oder 4% Umsatz Strafe"):
-        g['budget'] += 500000; g['xp'] += 300; g['mode'] = 'tactical'; add_log("Vorstand ist begeistert!", "lvl"); st.rerun()
-    if st.button("Ein einfaches Entschuldigungsschreiben reicht"):
-        g['budget'] -= 500000; g['ceo_trust'] -= 30; g['mode'] = 'tactical'; add_log("Vorstand ist fassungslos!", "error"); st.rerun()
+        st.subheader("⚖️ Compliance-Prüfung")
+        q_data = random.choice([
+            ("Marketing will 'Social Scoring' für Bonusprogramme. Dein Urteil laut EU AI Act?", "Verboten (Unannehmbar)", "Erlaubt (Minimales Risiko)"),
+            ("Was besagt das Maximumprinzip nach Dok. 12?", "Höchster Schutzbedarf einer Komponente gilt für den Verbund", "Durchschnittlicher Schutzbedarf reicht aus"),
+            ("Was ist das Hauptziel der GoBD im IT-Kontext?", "Integrität und Unveränderbarkeit der Belege", "Maximale Geschwindigkeit der Buchung")
+        ])
+        st.info(q_data[0])
+        q_c1, q_c2 = st.columns(2)
+        if q_c1.button(q_data[1]):
+            g['xp'] += 200; g['ceo_trust'] += 10; g['mode'] = 'tactical'; add_log("Fachfrage korrekt beantwortet!"); st.rerun()
+        if q_c2.button(q_data[2]):
+            g['budget'] -= 150000; g['ceo_trust'] -= 15; g['mode'] = 'tactical'; add_log("Falsches Urteil gefällt!", "error"); st.rerun()
