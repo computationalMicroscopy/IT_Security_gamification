@@ -1,164 +1,185 @@
 import streamlit as st
 import random
 
-# --- 1. INITIALISIERUNG (Fix für den KeyError) ---
-if 'game' not in st.session_state:
-    st.session_state.game = {
+# --- 1. ROBUSTE INITIALISIERUNG ---
+def init_game():
+    return {
         'day': 1,
-        'ap': 3,
-        'budget': 500000,
-        'cia': {'C': 70, 'I': 70, 'A': 70},
-        'rep': 80,
-        'logs': ["> System Initialized. Welcome, CISO."],
+        'ap': 4, # Aktionspunkte
+        'budget': 600000,
+        'cia': {'C': 60, 'I': 60, 'A': 60},
+        'rep': 50,
+        'logs': ["> SYSTEM BOOT: Initializing Cyber-Defense-Protocol..."],
         'incident': None,
-        'unlocked_intel': [],
-        'game_over': False
+        'game_over': False,
+        'won': False,
+        'intel_unlocked': False
     }
 
-def add_log(msg):
-    st.session_state.game['logs'].insert(0, f"> [Tag {st.session_state.game['day']}] {msg}")
+if 'game' not in st.session_state:
+    st.session_state.game = init_game()
 
-# --- 2. INTEL-DATENBANK (Glossar aus deinen Dokumenten) ---
-INTEL_DB = {
-    "BSI-Systematik": "Besteht aus 10 Schichten (Infrastruktur bis Anwendungen) und 47 elementaren Gefährdungen.",
-    "Maximumprinzip": "Das Schutzziel eines Systems entspricht dem höchsten Schutzbedarf seiner Komponenten (Dok. 12).",
-    "GoBD": "Grundsätze zur ordnungsgemäßen Buchführung. Erfordert die Unveränderbarkeit (Integrität) von Belegen.",
-    "DSGVO Art. 83": "Bußgelder bis zu 20 Mio. € oder 4% des weltweiten Jahresumsatzes bei schweren Verstößen.",
-    "EU AI Act": "KI-Klassifizierung: Unannehmbar (verboten), Hoch (reguliert), Transparenz (offenlegungspflichtig).",
-    "Authentizität": "Sicherstellung der Echtheit eines Objekts. Teilziel der Integrität nach BSI-Definition.",
-    "PDCA-Zyklus": "Plan-Do-Check-Act: Kontinuierlicher Prozess zur Verbesserung der Informationssicherheit."
+def add_log(msg, type="info"):
+    colors = {"info": "#00ff41", "warn": "#f2cc60", "error": "#ff00ff"}
+    st.session_state.game['logs'].insert(0, f"<span style='color:{colors.get(type)}'>[Tag {st.session_state.game['day']}] {msg}</span>")
+
+# --- 2. INTEGRIERTES GLOSSAR (Intel-Datenbank) ---
+INTEL = {
+    "BSI 10-Schichten": "Systematik des Grundschutzes (Infrastruktur bis Anwendung). Jede Schicht braucht eigene Bausteine.",
+    "47 Gefährdungen": "Das BSI definiert 47 elementare Gefährdungen (G 0.1 - G 0.47), die im Kompendium geprüft werden müssen.",
+    "Maximumprinzip": "Das Gesamtsystem erhält den Schutzbedarf seiner kritischsten Komponente (Dok. 12).",
+    "GoBD Integrität": "Vorgabe zur Unveränderbarkeit digitaler Belege. Verletzung führt zu rechtlichen Konsequenzen (Dok. 13).",
+    "DSGVO Art. 83": "Strafen bei Datenverlust: Bis zu 4% des Jahresumsatzes oder 20 Mio. €.",
+    "EU AI Act": "KI-Risikoklassen: Unannehmbar (Verboten), Hoch (Reguliert), Transparenz (Offenlegung).",
+    "PDCA-Zyklus": "Plan-Do-Check-Act: Der Motor des ISMS zur ständigen Verbesserung (Dok. 16)."
 }
 
-# --- 3. UI DESIGN (Cyberpunk Style) ---
-st.set_page_config(page_title="CISO Command 2026", layout="wide")
+# --- 3. UI & DESIGN (Cyberpunk Terminal) ---
+st.set_page_config(page_title="CISO Tactical Simulator", layout="wide")
 st.markdown("""
     <style>
-    .stApp { background-color: #0b0e14; color: #00ff41; font-family: 'Courier New', monospace; }
-    .status-card { background: #161b22; border: 1px solid #00ff41; padding: 15px; border-radius: 5px; text-align: center; color: white; }
-    .terminal { background: #000; border: 1px solid #00ff41; color: #00ff41; padding: 15px; height: 250px; overflow-y: auto; font-size: 0.85em; }
-    .stButton>button { border: 1px solid #00ff41; background: #0b0e14; color: #00ff41; width: 100%; transition: 0.3s; }
-    .stButton>button:hover { background: #00ff41; color: #000; box-shadow: 0 0 10px #00ff41; }
+    .stApp { background-color: #050505; color: #00ff41; font-family: 'Fira Code', monospace; }
+    .stat-box { background: #111; border: 1px solid #00ff41; padding: 10px; border-radius: 5px; text-align: center; }
+    .terminal { background: #000; border: 1px solid #00ff41; padding: 15px; height: 350px; overflow-y: auto; font-size: 0.9em; border-left: 5px solid #00ff41; }
+    .sidebar-intel { background: #161b22; padding: 10px; border-radius: 5px; border: 1px solid #f2cc60; margin-bottom: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. SEITENLEISTE (Szenario & Glossar) ---
+# --- 4. SZENARIO & SIDEBAR ---
 with st.sidebar:
-    st.title("🛡️ MISSION: SILVER-DATA")
-    st.info("""**Szenario:** Die Silver-Data GmbH handelt mit Edelmetallen. 
-    Du hast 10 Tage Zeit, die IT-Sicherheit auf BSI-Standard zu heben, bevor das Bundesamt zur Prüfung kommt. 
-    Verlierst du das Budget oder sinkt die Sicherheit (CIA) auf 0, ist die Firma am Ende.""")
+    st.title("📟 MISSION: SILVER-DATA")
+    st.markdown("""
+    **Szenario:** 2026. Die *Silver-Data GmbH* steht vor einem BSI-Audit. 
+    Hacker-Kollektive nutzen Sicherheitslücken im Gold-Handelssystem. 
     
+    **Deine Mission:** 1. Überlebe 14 Tage (Audit-Vorbereitung).
+    2. Halte die CIA-Werte über 30%.
+    3. Verhindere die Insolvenz durch Bußgelder.
+    """)
     st.divider()
-    st.subheader("📖 Intel-Datenbank")
-    search = st.text_input("Begriff suchen...", help="Nutze die Begriffe aus deinen Unterlagen!")
-    for key, val in INTEL_DB.items():
-        if not search or search.lower() in key.lower():
-            st.markdown(f"**{key}:**\n{val}")
+    st.subheader("📚 Intel-Datenbank (Glossar)")
+    for key, val in INTEL.items():
+        with st.expander(key):
+            st.write(val)
 
-# --- 5. DASHBOARD ---
+# --- 5. GAME OVER / WIN LOGIC ---
 if st.session_state.game['game_over']:
-    st.error("🚨 GAME OVER - SYSTEM CRITICAL ERROR")
+    st.error("🚨 SYSTEM COLLAPSE: Die Silver-Data GmbH wurde zerschlagen.")
     if st.button("Simulation Neustarten"):
-        del st.session_state['game']
+        st.session_state.game = init_game()
         st.rerun()
     st.stop()
 
-st.title("🖥️ CISO Command Center")
+if st.session_state.game['won']:
+    st.balloons()
+    st.success("🏆 AUDIT BESTANDEN: Silver-Data ist BSI-Zertifiziert!")
+    if st.button("Erneuter Durchlauf"):
+        st.session_state.game = init_game()
+        st.rerun()
+    st.stop()
+
+# --- 6. DASHBOARD ---
+st.title("🛡️ CISO Defense Command")
 c1, c2, c3, c4 = st.columns(4)
-c1.markdown(f"<div class='status-card'>💰 BUDGET<br>{st.session_state.game['budget']:,} €</div>", unsafe_allow_html=True)
-c2.markdown(f"<div class='status-card'>⚡ AKTIONEN<br>{st.session_state.game['ap']} AP</div>", unsafe_allow_html=True)
-c3.markdown(f"<div class='status-card'>🛡️ REPUTATION<br>{st.session_state.game['rep']}%</div>", unsafe_allow_html=True)
-c4.markdown(f"<div class='status-card'>🗓️ TAG<br>{st.session_state.game['day']} / 10</div>", unsafe_allow_html=True)
+c1.markdown(f"<div class='stat-box'>💰 BUDGET<br><b style='color:white'>{st.session_state.game['budget']:,} €</b></div>", unsafe_allow_html=True)
+c2.markdown(f"<div class='stat-box'>⚡ AKTIONSPUNKTE<br><b style='color:white'>{st.session_state.game['ap']} / 4</b></div>", unsafe_allow_html=True)
+c3.markdown(f"<div class='stat-box'>🗓️ TAG<br><b style='color:white'>{st.session_state.game['day']} / 14</b></div>", unsafe_allow_html=True)
+c4.markdown(f"<div class='stat-box'>📈 REPUTATION<br><b style='color:white'>{st.session_state.game['rep']}%</b></div>", unsafe_allow_html=True)
 
 st.divider()
 
-# PROGRESS BARS FÜR CIA
+# PROGRESS BARS
+st.write("### 🔒 CIA-Status (Schutzziele)")
 
 cols = st.columns(3)
 for i, (k, v) in enumerate(st.session_state.game['cia'].items()):
-    label = {"C": "Vertraulichkeit", "I": "Integrität", "A": "Verfügbarkeit"}[k]
+    label = {"C": "Vertraulichkeit (Confidentiality)", "I": "Integrität (Integrity)", "A": "Verfügbarkeit (Availability)"}[k]
     cols[i].write(f"**{label}**")
     cols[i].progress(max(0, min(100, v)))
 
-# --- 6. AKTIONEN ---
+# --- 7. TACTICAL OPERATIONS ---
 col_act, col_log = st.columns([2, 1])
 
 with col_act:
-    st.subheader("⚡ Verfügbare Operationen")
-    t1, t2, t3 = st.tabs(["🏗️ Prävention (Plan/Do)", "🔎 Analyse (Check)", "⚖️ Compliance (Act)"])
+    st.subheader("🛠️ Verfügbare Maßnahmen")
+    t1, t2, t3 = st.tabs(["🏗️ Prävention (Do)", "🔍 Analyse (Check)", "⚖️ Compliance (Act)"])
     
     with t1:
-        st.write("Investiere in die BSI-Schichten.")
-        if st.button("Mitarbeiter-Schulung: Barclays-Phishing (40k € | 1 AP)"):
-            if st.session_state.game['ap'] >= 1 and st.session_state.game['budget'] >= 40000:
-                st.session_state.game['ap'] -= 1
-                st.session_state.game['budget'] -= 40000
-                st.session_state.game['cia']['C'] += 15
-                add_log("Awareness-Training durchgeführt (Dok. 16).")
-                st.rerun()
-        
-        if st.button("BSI-Infrastruktur Level 1-5 (120k € | 2 AP)"):
-            if st.session_state.game['ap'] >= 2 and st.session_state.game['budget'] >= 120000:
+        st.write("Investiere in die BSI-Schichten und technische Härtung.")
+        if st.button("BSI-Schicht 1-5 absichern (100k € | 2 AP)"):
+            if st.session_state.game['ap'] >= 2 and st.session_state.game['budget'] >= 100000:
                 st.session_state.game['ap'] -= 2
-                st.session_state.game['budget'] -= 120000
+                st.session_state.game['budget'] -= 100000
                 st.session_state.game['cia']['A'] += 20
                 st.session_state.game['cia']['I'] += 10
-                add_log("Physische Sicherheit & Netze verstärkt.")
+                add_log("Infrastruktur-Härtung nach BSI-Standard abgeschlossen.")
+                st.rerun()
+
+        if st.button("Backup-System (G 0.18) einführen (50k € | 1 AP)"):
+            if st.session_state.game['ap'] >= 1 and st.session_state.game['budget'] >= 50000:
+                st.session_state.game['ap'] -= 1
+                st.session_state.game['budget'] -= 50000
+                st.session_state.game['cia']['A'] = 100
+                add_log("Resilienz gegen Ransomware durch Backups erhöht.")
                 st.rerun()
 
     with t2:
-        st.write("Überprüfe die Integrität deiner Daten.")
-        if st.button("Datenbank-Audit: GoBD Check (1 AP)"):
+        st.write("Führe Audits durch, um verdeckte Angriffe zu finden.")
+        if st.button("System-Scan nach SQL-Injections (1 AP)"):
             if st.session_state.game['ap'] >= 1:
                 st.session_state.game['ap'] -= 1
-                if random.random() > 0.5:
-                    st.session_state.game['incident'] = "SQL_INJECTION"
-                    add_log("Anomalie gefunden: Unberechtigte Preisänderungen detektiert!")
+                if random.random() > 0.4:
+                    st.session_state.game['incident'] = "SQL"
+                    add_log("KRITISCH: SQL-Injection in der Preisliste gefunden (Integritätsverlust!)", "error")
                 else:
-                    add_log("GoBD-Audit ohne Befund abgeschlossen.")
+                    add_log("Scan sauber. Keine Anomalien detektiert.")
                 st.rerun()
 
     with t3:
-        st.write("Rechtliche Absicherung.")
-        if st.button("EU AI Act: KI-Projektprüfung (1 AP)"):
+        st.write("Stelle die rechtliche Konformität sicher.")
+        st.warning("Prüfung: Geplante 'Social Scoring' KI für Kunden.")
+        if st.button("KI-Projekt nach EU AI Act prüfen (1 AP)"):
             if st.session_state.game['ap'] >= 1:
                 st.session_state.game['ap'] -= 1
-                st.info("Marketing will 'Social Scoring' einführen. In welche KI-Risikoklasse fällt das?")
-                if st.button("A: Unannehmbar (Verboten)"):
-                    st.success("Korrekt! Projekt gestoppt.")
-                    st.session_state.game['rep'] += 10
-                if st.button("B: Hohes Risiko"):
-                    st.error("Falsch! Bußgeld droht (4% Budget).")
+                ans = st.selectbox("Einstufung laut AI Act?", ["Hohes Risiko", "Unannehmbares Risiko (Verboten)"], index=None)
+                if ans == "Unannehmbares Risiko (Verboten)":
+                    st.success("Korrekt! Projekt gestoppt. Keine Bußgelder.")
+                    st.session_state.game['rep'] += 15
+                elif ans:
+                    st.error("FALSCH! DSGVO-Bußgeld fällig (4% vom Budget).")
                     st.session_state.game['budget'] *= 0.96
+                    st.session_state.game['rep'] -= 20
                 st.rerun()
 
-    if st.session_state.game['incident'] == "SQL_INJECTION":
-        st.error("🚨 INCIDENT: SQL-Injection manipuliert Preislisten!")
-        if st.button("Gegenmaßnahme: Input-Validierung (1 AP)"):
+    # INCIDENT MANAGEMENT
+    if st.session_state.game['incident'] == "SQL":
+        st.markdown("<div style='border:2px solid #ff00ff; padding:10px;'>", unsafe_allow_html=True)
+        st.error("🚨 AKTIVER INCIDENT: Preismanipulation (GoBD-Verstoß)")
+        if st.button("Gegenmaßnahme: Datenbank-Härtung (1 AP)"):
             st.session_state.game['ap'] -= 1
             st.session_state.game['incident'] = None
-            st.session_state.game['cia']['I'] = 100
-            add_log("Integrität wiederhergestellt.")
+            st.session_state.game['cia']['I'] = min(100, st.session_state.game['cia']['I'] + 30)
+            add_log("Datenintegrität wiederhergestellt.")
             st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
 
 with col_log:
-    st.subheader("📟 System-Logs")
-    log_html = "".join([f"<div>{l}</div>" for l in st.session_state.game['logs']])
-    st.markdown(f"<div class='terminal'>{log_html}</div>", unsafe_allow_html=True)
+    st.subheader("📟 System-Terminal")
+    logs = "".join([f"<div>{l}</div>" for l in st.session_state.game['logs']])
+    st.markdown(f"<div class='terminal'>{logs}</div>", unsafe_allow_html=True)
     
-    st.write("---")
-    if st.button("⏭️ TAG BEENDEN"):
+    st.divider()
+    if st.button("🌞 TAG BEENDEN"):
         st.session_state.game['day'] += 1
-        st.session_state.game['ap'] = 3
-        # Täglicher Werte-Verfall (Entropie)
+        st.session_state.game['ap'] = 4
+        # Entropie: CIA sinkt jeden Tag leicht
         for k in st.session_state.game['cia']:
-            st.session_state.game['cia'][k] -= random.randint(3, 10)
-        add_log("Neuer Arbeitstag. System-Entropie steigt.")
-        if st.session_state.game['day'] > 10:
-            st.balloons()
-            st.success("ZERTIFIKAT ERHALTEN!")
+            st.session_state.game['cia'][k] -= random.randint(5, 12)
+        add_log("Neuer Tag beginnt. Schutzziele durch Verschleiß gesunken.")
+        
+        # Sieg/Niederlage Checks
+        if st.session_state.game['day'] > 14:
+            st.session_state.game['won'] = True
+        if any(v <= 0 for v in st.session_state.game['cia'].values()) or st.session_state.game['budget'] <= 0:
+            st.session_state.game['game_over'] = True
         st.rerun()
-
-# --- 7. GAME OVER LOGIC ---
-if any(v <= 0 for v in st.session_state.game['cia'].values()) or st.session_state.game['budget'] <= 0:
-    st.session_state.game['game_over'] = True
