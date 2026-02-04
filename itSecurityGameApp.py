@@ -72,7 +72,7 @@ m5.markdown(f"<div class='metric-box'>🤝 TRUST<br><b>{g['ceo_trust']}%</b></di
 
 st.divider()
 
-# CIA Triad Visualization
+# CIA Triade - Visualisierung
 
 cia_cols = st.columns(3)
 for i, (k, v) in enumerate(g['cia'].items()):
