@@ -60,7 +60,7 @@ with st.expander("📂 MISSIONS-AKTE: OPERATION GOLDEN SHIELD", expanded=True):
     Ein **SIEM (Security Information and Event Management)** ist das Gehirn deines SOCs (Security Operations Center). Es sammelt Logs aus allen Systemen, analysiert sie in Echtzeit und erkennt Anomalien (z.B. Brute-Force Angriffe), bevor diese Schaden anrichten. Im Spiel blendet es die Bayes-KI, indem es ihre Angriffsmuster vorzeitig aufdeckt.
     """)
 
-st.markdown("<div class='hud-header'><h1 class='glitch-text'>🛡️ CISO COMMAND v10.1</h1></div>", unsafe_allow_html=True)
+st.markdown("<div class='hud-header'><h1 class='glitch-text'>🛡️ IT-Security Gamification</h1></div>", unsafe_allow_html=True)
 
 # --- 5. DASHBOARD ---
 m1, m2, m3, m4, m5 = st.columns(5)
