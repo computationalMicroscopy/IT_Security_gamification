@@ -164,7 +164,7 @@ if g['mode'] == 'audit':
 
 # --- 8. ÜBERARBEITETES GLOSSAR (VOLLSTÄNDIG) ---
 with st.sidebar:
-    st.title("📖 CISO-LEXIKON v10.1")
+    st.title("📖 CISO-LEXIKON")
     st.markdown("---")
     search = st.text_input("Begriff suchen...")
     intel_content = {
