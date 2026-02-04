@@ -35,7 +35,7 @@ def add_log(msg, type="info"):
     g['logs'].insert(0, f"{icon} [Tag {g['day']}] {msg}")
 
 # --- 3. UI & STYLING ---
-st.set_page_config(page_title="CISO Command 10.1", layout="wide")
+st.set_page_config(page_title="IT Sicherheit - Gamification", layout="wide")
 st.markdown("""
     <style>
     @keyframes glitch { 0% { text-shadow: 2px 0 red; } 50% { text-shadow: -2px 0 blue; } 100% { text-shadow: 2px 0 red; } }
